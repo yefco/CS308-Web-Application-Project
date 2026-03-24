@@ -1,0 +1,1 @@
+Kaan işlerini yap artık.
