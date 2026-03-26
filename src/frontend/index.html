@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Online Store — API Test</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #0f172a;
+            color: #e2e8f0;
+            padding: 2rem;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        h1 { font-size: 1.5rem; margin-bottom: 1.5rem; color: #38bdf8; }
+        h2 { font-size: 1.1rem; margin-bottom: 0.75rem; color: #94a3b8; }
+        .card {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            padding: 1.25rem;
+            margin-bottom: 1.25rem;
+        }
+        label { display: block; font-size: 0.85rem; color: #94a3b8; margin-bottom: 0.25rem; }
+        input {
+            width: 100%;
+            padding: 0.5rem 0.75rem;
+            margin-bottom: 0.75rem;
+            border: 1px solid #475569;
+            border-radius: 6px;
+            background: #0f172a;
+            color: #e2e8f0;
+            font-size: 0.9rem;
+        }
+        button {
+            padding: 0.6rem 1.25rem;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            color: #fff;
+            margin-right: 0.5rem;
+        }
+        .btn-blue { background: #2563eb; }
+        .btn-green { background: #16a34a; }
+        .btn-gray { background: #475569; }
+        button:hover { opacity: 0.9; }
+        .response-box {
+            margin-top: 0.75rem;
+            padding: 0.75rem;
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 6px;
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            font-size: 0.8rem;
+            white-space: pre-wrap;
+            word-break: break-all;
+            max-height: 200px;
+            overflow-y: auto;
+            display: none;
+        }
+        .response-box.visible { display: block; }
+        .status-ok { border-left: 3px solid #16a34a; }
+        .status-err { border-left: 3px solid #dc2626; }
+        .token-bar {
+            font-size: 0.8rem;
+            color: #64748b;
+            margin-bottom: 1rem;
+            word-break: break-all;
+        }
+        .token-bar span { color: #38bdf8; }
+    </style>
+</head>
+<body>
+
+    <h1>Online Store — API Test Panel</h1>
+
+    <div class="token-bar">
+        Stored JWT: <span id="tokenDisplay">none</span>
+    </div>
+
+    <!-- ── Main Page ────────────────────────────────────── -->
+    <div class="card">
+        <h2>GET / — Main Page</h2>
+        <button class="btn-gray" onclick="testMainPage()">Send Request</button>
+        <div class="response-box" id="mainResp"></div>
+    </div>
+
+    <!-- ── Sign Up ──────────────────────────────────────── -->
+    <div class="card">
+        <h2>POST /api/auth/sign-up</h2>
+        <label>Name</label>
+        <input type="text" id="signupName" value="John Doe" />
+        <label>Email</label>
+        <input type="email" id="signupEmail" value="john@example.com" />
+        <label>Password</label>
+        <input type="password" id="signupPassword" value="secret123" />
+        <button class="btn-blue" onclick="testSignUp()">Sign Up</button>
+        <div class="response-box" id="signupResp"></div>
+    </div>
+
+    <!-- ── Login ────────────────────────────────────────── -->
+    <div class="card">
+        <h2>POST /api/auth/login</h2>
+        <label>Email</label>
+        <input type="email" id="loginEmail" value="john@example.com" />
+        <label>Password</label>
+        <input type="password" id="loginPassword" value="secret123" />
+        <button class="btn-green" onclick="testLogin()">Login</button>
+        <div class="response-box" id="loginResp"></div>
+    </div>
+
+    <script>
+        const API = "http://localhost:3000";
+        let savedToken = null;
+
+        function showResponse(elementId, status, data) {
+            const el = document.getElementById(elementId);
+            el.textContent = `Status: ${status}\n\n${JSON.stringify(data, null, 2)}`;
+            el.className = "response-box visible " + (status < 400 ? "status-ok" : "status-err");
+        }
+
+        function saveToken(data) {
+            if (data.token) {
+                savedToken = data.token;
+                document.getElementById("tokenDisplay").textContent =
+                    savedToken.substring(0, 30) + "...";
+            }
+        }
+
+        async function testMainPage() {
+            try {
+                const res = await fetch(API + "/");
+                const data = await res.json();
+                showResponse("mainResp", res.status, data);
+            } catch (err) {
+                showResponse("mainResp", 0, { error: err.message });
+            }
+        }
+
+        async function testSignUp() {
+            try {
+                const res = await fetch(API + "/api/auth/sign-up", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        name: document.getElementById("signupName").value,
+                        email: document.getElementById("signupEmail").value,
+                        password: document.getElementById("signupPassword").value,
+                    }),
+                });
+                const data = await res.json();
+                showResponse("signupResp", res.status, data);
+                saveToken(data);
+            } catch (err) {
+                showResponse("signupResp", 0, { error: err.message });
+            }
+        }
+
+        async function testLogin() {
+            try {
+                const res = await fetch(API + "/api/auth/login", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        email: document.getElementById("loginEmail").value,
+                        password: document.getElementById("loginPassword").value,
+                    }),
+                });
+                const data = await res.json();
+                showResponse("loginResp", res.status, data);
+                saveToken(data);
+            } catch (err) {
+                showResponse("loginResp", 0, { error: err.message });
+            }
+        }
+    </script>
+
+</body>
+</html>

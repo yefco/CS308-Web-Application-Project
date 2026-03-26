@@ -1,70 +1,91 @@
-# Getting Started with Create React App
+# Online Store — Backend API
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+Rust backend for the CS 308 Online Store project. Built with Axum and PostgreSQL.
 
-## Available Scripts
+## Stack
 
-In the project directory, you can run:
+- **Runtime:** Rust + Tokio (async)
+- **Framework:** Axum 0.7
+- **Database:** PostgreSQL + SQLx (async, compile-time checked queries)
+- **Auth:** bcrypt password hashing, JWT (HS256) token issuance
 
-### `npm start`
+## What's Implemented
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+- User registration with duplicate email detection
+- User login with bcrypt password verification
+- JWT token generation (24h expiry, encodes user ID + role)
+- Unified error handling with proper HTTP status codes
+- CORS enabled for frontend development
+- Full database schema covering: users, products, categories, orders, invoices, payments, shopping carts, comments, ratings, wishlists, deliveries, refund requests, and notifications
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+## Project Structure
 
-### `npm test`
+```
+src/
+├── main.rs                  # Entry point — wires DB, services, routes, server
+├── config/
+│   └── app_config.rs        # Env-based configuration
+├── database/
+│   ├── db.rs                # PostgreSQL connection pool
+│   └── schema.sql           # Full database schema
+├── models/
+│   └── user.rs              # User entity, request/response DTOs
+├── repository/
+│   └── user_repository.rs   # SQL queries for users table
+├── services/
+│   └── auth_service.rs      # Auth business logic (hash, verify, JWT)
+├── handlers/
+│   └── auth_handler.rs      # HTTP request handlers
+├── routes/
+│   └── auth_routes.rs       # URL → handler mapping
+├── utils/
+│   └── errors.rs            # Unified AppError type
+└── middleware/               # Reserved for JWT auth guard
+```
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+## API Endpoints
 
-### `npm run build`
+| Method | Path                | Description        | Auth |
+|--------|---------------------|--------------------|------|
+| GET    | `/`                 | Health check       | No   |
+| POST   | `/api/auth/sign-up` | Register new user  | No   |
+| POST   | `/api/auth/login`   | Authenticate user  | No   |
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+## Setup
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+```bash
+# 1. Create database
+psql -d postgres -c "CREATE DATABASE online_store;"
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+# 2. Run schema
+psql -d online_store -f src/database/schema.sql
 
-### `npm run eject`
+# 3. Configure environment
+cp .env.example .env
+# Edit .env with your DATABASE_URL
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+# 4. Run
+cargo run
+```
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+## Environment Variables
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+| Variable               | Required | Default   |
+|------------------------|----------|-----------|
+| `DATABASE_URL`         | Yes      | —         |
+| `JWT_SECRET`           | Yes      | —         |
+| `SERVER_HOST`          | No       | `0.0.0.0` |
+| `SERVER_PORT`          | No       | `3000`    |
+| `JWT_EXPIRATION_HOURS` | No       | `24`      |
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+## Next Steps
 
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+- [ ] JWT auth middleware for protected routes
+- [ ] Product CRUD (product manager)
+- [ ] Shopping cart (guest + authenticated)
+- [ ] Order placement + payment flow
+- [ ] Comment/rating system with approval
+- [ ] Sales manager dashboard (discounts, invoices, revenue)
+- [ ] Delivery tracking
+- [ ] Refund request flow
+>>>>>>> origin/master
