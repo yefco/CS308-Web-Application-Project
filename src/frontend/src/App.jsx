@@ -26,6 +26,8 @@ function AppContent() {
     setIsLoggedIn(false);
     localStorage.removeItem('isLoggedIn');
     localStorage.removeItem('userEmail');
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('userData');
   };
 
   const handleLoginSuccess = () => {

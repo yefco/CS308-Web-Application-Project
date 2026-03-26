@@ -1,0 +1,150 @@
+/* Home Page Styles */
+
+.home-page {
+  background-color: #f8f9fa;
+  min-height: 100vh;
+}
+
+.hero-banner {
+  background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+  color: white;
+  position: relative;
+  overflow: hidden;
+}
+
+.hero-banner::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 320"><path fill="%23ffffff" fill-opacity="0.1" d="M0,64L48,80C96,96,192,128,288,128C384,128,480,96,576,90.7C672,85,768,107,864,122.7C960,139,1056,149,1152,144C1248,139,1344,117,1392,106.7L1440,96L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"></path></svg>') no-repeat bottom;
+  background-size: cover;
+  opacity: 0.1;
+}
+
+.hero-banner > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Product Cards */
+.product-card {
+  transition: all 0.3s ease;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.product-card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
+}
+
+/* Animations */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-in-up {
+  animation: fadeInUp 0.6s ease;
+}
+
+/* Search and Filter Section */
+.filter-section {
+  background: white;
+  padding: 24px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  margin-bottom: 32px;
+}
+
+.filter-section input,
+.filter-section select {
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+  padding: 10px 12px;
+  font-size: 14px;
+  transition: all 0.3s ease;
+}
+
+.filter-section input:focus,
+.filter-section select:focus {
+  border-color: #3498db;
+  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+  outline: none;
+}
+
+/* Responsive */
+@media (max-width: 960px) {
+  .hero-banner {
+    padding: 40px 16px;
+  }
+
+  .hero-banner h1 {
+    font-size: 24px !important;
+  }
+
+  .hero-banner h6 {
+    font-size: 16px !important;
+  }
+}
+
+@media (max-width: 600px) {
+  .hero-banner {
+    padding: 24px 16px;
+  }
+
+  .hero-banner h1 {
+    font-size: 20px !important;
+  }
+
+  .hero-banner h6 {
+    font-size: 14px !important;
+  }
+}
+
+/* Stock Status */
+.stock-high {
+  color: #27ae60;
+  font-weight: 500;
+}
+
+.stock-low {
+  color: #e74c3c;
+  font-weight: 500;
+}
+
+/* Price Styling */
+.price-current {
+  font-size: 24px;
+  font-weight: bold;
+  color: #27ae60;
+}
+
+.price-original {
+  text-decoration: line-through;
+  color: #95a5a6;
+  margin-left: 8px;
+}
+
+/* Discount Badge */
+.discount-badge {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: linear-gradient(135deg, #e74c3c, #c0392b);
+  color: white;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-weight: bold;
+  font-size: 12px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
