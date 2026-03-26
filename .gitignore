@@ -2,6 +2,10 @@
 /target
 **/*.rs.bk
 
+# Node / React
+node_modules/
+/src/frontend/node_modules/
+
 # misc
 .DS_Store
 .idea
