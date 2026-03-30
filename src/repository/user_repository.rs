@@ -8,7 +8,6 @@
 //! lifetime is managed by the caller (main.rs / AppState).
 
 use sqlx::PgPool;
-use uuid::Uuid;
 
 use crate::models::user::User;
 
@@ -22,19 +21,19 @@ use crate::models::user::User;
 /// constraint violation) or if the connection fails.
 pub async fn create_user(
     pool: &PgPool,
-    name: &str,
+    user_name: &str,
     email: &str,
     password_hash: &str,
 ) -> Result<User, sqlx::Error> {
     sqlx::query_as::<_, User>(
         r#"
-        INSERT INTO users (name, email, password_hash)
+        INSERT INTO users (user_name, email, password_hash)
         VALUES ($1, $2, $3)
-        RETURNING id, name, email, password_hash, role,
+        RETURNING user_id, user_name, email, password_hash, role,
                   tax_id, home_address, created_at, updated_at
         "#,
     )
-    .bind(name)
+    .bind(user_name)
     .bind(email)
     .bind(password_hash)
     .fetch_one(pool)
@@ -51,7 +50,7 @@ pub async fn find_by_email(
 ) -> Result<Option<User>, sqlx::Error> {
     sqlx::query_as::<_, User>(
         r#"
-        SELECT id, name, email, password_hash, role,
+        SELECT user_id, user_name, email, password_hash, role,
                tax_id, home_address, created_at, updated_at
         FROM users
         WHERE email = $1
@@ -68,17 +67,17 @@ pub async fn find_by_email(
 /// during authenticated requests.
 pub async fn find_by_id(
     pool: &PgPool,
-    id: Uuid,
+    user_id: i32,
 ) -> Result<Option<User>, sqlx::Error> {
     sqlx::query_as::<_, User>(
         r#"
-        SELECT id, name, email, password_hash, role,
+        SELECT user_id, user_name, email, password_hash, role,
                tax_id, home_address, created_at, updated_at
         FROM users
-        WHERE id = $1
+        WHERE user_id = $1
         "#,
     )
-    .bind(id)
+    .bind(user_id)
     .fetch_optional(pool)
     .await
 }

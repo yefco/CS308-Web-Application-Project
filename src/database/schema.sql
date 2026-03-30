@@ -1,13 +1,16 @@
+CREATE TYPE user_role AS ENUM ('customer', 'sales_manager', 'product_manager');
+
 -- Create users table
 CREATE TABLE users (
     user_id SERIAL PRIMARY KEY,
-    full_name VARCHAR(100) NOT NULL,
+    user_name VARCHAR(100) NOT NULL,
     tax_id VARCHAR(50),
     email VARCHAR(255) NOT NULL UNIQUE,
     password_hash TEXT NOT NULL,
     home_address TEXT,
-    role VARCHAR(30) NOT NULL CHECK (role IN ('customer', 'sales_manager', 'product_manager')),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    role user_role NOT NULL DEFAULT 'customer',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Create categories table

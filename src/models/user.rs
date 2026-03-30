@@ -11,7 +11,6 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
-use uuid::Uuid;
 
 // ─── Role Enum ───────────────────────────────────────────────
 
@@ -31,8 +30,8 @@ pub enum UserRole {
 /// Contains `password_hash` — never expose this to the client.
 #[derive(Debug, Clone, FromRow)]
 pub struct User {
-    pub id: Uuid,
-    pub name: String,
+    pub user_id: i32,
+    pub user_name: String,
     pub email: String,
     pub password_hash: String,
     pub role: UserRole,
@@ -47,7 +46,7 @@ pub struct User {
 /// Payload for `POST /api/auth/sign-up`.
 #[derive(Debug, Deserialize)]
 pub struct SignUpRequest {
-    pub name: String,
+    pub user_name: String,
     pub email: String,
     pub password: String,
     pub tax_id: Option<String>,
@@ -67,8 +66,8 @@ pub struct LoginRequest {
 /// Intentionally excludes `password_hash`.
 #[derive(Debug, Serialize)]
 pub struct UserResponse {
-    pub id: Uuid,
-    pub name: String,
+    pub user_id: i32,
+    pub user_name: String,
     pub email: String,
     pub role: UserRole,
     pub tax_id: Option<String>,
@@ -90,8 +89,8 @@ pub struct AuthResponse {
 impl From<User> for UserResponse {
     fn from(user: User) -> Self {
         Self {
-            id: user.id,
-            name: user.name,
+            user_id: user.user_id,
+            user_name: user.user_name,
             email: user.email,
             role: user.role,
             tax_id: user.tax_id,

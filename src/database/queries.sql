@@ -1,7 +1,7 @@
 
 
 -- Insert user
-INSERT INTO users (full_name, tax_id, email, password_hash, home_address, role)
+INSERT INTO users (user_name, tax_id, email, password_hash, home_address, role)
 VALUES ('Kaan Sayin', '12345678901', 'kaan@example.com', 'hashed_pw_here', 'Istanbul, Turkey', 'customer');
 
 -- Insert category
@@ -39,7 +39,7 @@ JOIN categories c ON p.category_id = c.category_id;
 -- Get payment information for a specific user
 SELECT
     p.payment_id,
-    u.full_name,
+    u.user_name,
     p.card_holder_name,
     p.expire_month,
     p.expire_year

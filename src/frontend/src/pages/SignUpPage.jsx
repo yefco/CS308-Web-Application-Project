@@ -111,7 +111,7 @@ const SignUpPage = ({ onSignUpSuccess }) => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name: formData.fullName,
+          user_name: formData.fullName,
           email: formData.email,
           password: formData.password,
           tax_id: formData.taxId || null,
