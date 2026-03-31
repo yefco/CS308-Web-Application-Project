@@ -11,8 +11,8 @@ CREATE TABLE users (
     password_hash TEXT NOT NULL,
     home_address TEXT,
     role user_role NOT NULL DEFAULT 'customer',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Create categories table
@@ -34,7 +34,7 @@ CREATE TABLE products (
     price NUMERIC(10,2) NOT NULL CHECK (price >= 0),
     warranty_status BOOLEAN DEFAULT FALSE,
     distributor_info TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT fk_products_category
         FOREIGN KEY (category_id)
@@ -51,7 +51,7 @@ CREATE TABLE payment_info (
     expire_month INT NOT NULL CHECK (expire_month BETWEEN 1 AND 12),
     expire_year INT NOT NULL,
     cvv VARCHAR(255) NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT fk_payment_user
         FOREIGN KEY (user_id)
@@ -65,8 +65,8 @@ CREATE TABLE shopping_carts (
     cart_id SERIAL PRIMARY KEY,
     user_id INT UNIQUE,
     session_id VARCHAR(255) UNIQUE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT fk_cart_user
         FOREIGN KEY (user_id)
@@ -80,7 +80,7 @@ CREATE TABLE cart_items (
     cart_id INT NOT NULL,
     product_id INT NOT NULL,
     quantity INT NOT NULL DEFAULT 1 CHECK (quantity > 0),
-    added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    added_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT fk_cart_items_cart
         FOREIGN KEY (cart_id)
