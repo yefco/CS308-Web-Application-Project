@@ -14,7 +14,6 @@ use chrono::{Duration, Utc};
 use jsonwebtoken::{encode, EncodingKey, Header};
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
-use uuid::Uuid;
 
 use crate::models::user::{AuthResponse, LoginRequest, SignUpRequest, User, UserResponse};
 use crate::repository::user_repository;
@@ -80,7 +79,7 @@ impl AuthService {
         // ── Persist user ─────────────────────────────────────
         let user = user_repository::create_user(
             &self.pool,
-            &req.name,
+            &req.user_name,
             &req.email,
             &password_hash,
         )
@@ -133,7 +132,7 @@ impl AuthService {
         let expiration = now + Duration::hours(self.jwt_expiration_hours);
 
         let claims = Claims {
-            sub: user.id.to_string(),
+            sub: user.user_id.to_string(),
             role: format!("{:?}", user.role).to_lowercase(),
             iat: now.timestamp() as usize,
             exp: expiration.timestamp() as usize,
