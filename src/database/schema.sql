@@ -15,6 +15,8 @@ CREATE TABLE users (
     updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
+
+
 -- Create categories table
 CREATE TABLE categories (
     category_id SERIAL PRIMARY KEY,
