@@ -42,7 +42,7 @@ const HomePage = ({ isLoggedIn }) => {
       category: 'laptops',
       price: 1999,
       originalPrice: 2199,
-      image: 'https://via.placeholder.com/300x200?text=MacBook+Pro',
+      image: 'https://cdsassets.apple.com/live/SZLF0YNV/images/sp/111902_mbp14-silver2.png',
       rating: 4.8,
       reviews: 245,
       stock: 12,
@@ -55,7 +55,7 @@ const HomePage = ({ isLoggedIn }) => {
       category: 'smartphones',
       price: 999,
       originalPrice: 1099,
-      image: 'https://via.placeholder.com/300x200?text=iPhone+15+Pro',
+      image: 'https://cdsassets.apple.com/live/7WUAS350/images/tech-specs/iphone-15-pro-max.png',
       rating: 4.7,
       reviews: 512,
       stock: 25,
@@ -68,7 +68,7 @@ const HomePage = ({ isLoggedIn }) => {
       category: 'tablets',
       price: 599,
       originalPrice: 699,
-      image: 'https://via.placeholder.com/300x200?text=iPad+Air',
+      image: 'https://store.storeimages.cdn-apple.com/1/as-images.apple.com/is/ipad-air-storage-select-202405-13inch-space-gray-wifi_FMT_WHH?wid=1280&hei=720&fmt=p-jpg&qlt=80&.v=TENLTVRoeFdHUUI5ZE1ZZmxpQUlNMm5pQUoxb0NIVEJFSjRVRzZ4dzV5VE52YTlHWkltOWpNQVF4Y3VwTzdmWGl1WEttbFlFejZ0L0VqVlhGc0pKT3BmbTBuZmdjbmVyUEN6U1pnb2VjUDh3Qjhvd1BnZkhnUFFYU1JJMGh5alFTUzBLNXZ0QTA0SmlDNU1IU2czNjMzNXFNVzc5YkZmK2I4YzJ4ZndkZUdj&traceId=1r',
       rating: 4.5,
       reviews: 189,
       stock: 18,
@@ -81,7 +81,7 @@ const HomePage = ({ isLoggedIn }) => {
       category: 'accessories',
       price: 249,
       originalPrice: 299,
-      image: 'https://via.placeholder.com/300x200?text=AirPods+Pro',
+      image: 'https://www.apple.com/v/airpods-pro/q/images/overview/welcome/hero_startframe__bfinf01b59si_large.jpg',
       rating: 4.6,
       reviews: 328,
       stock: 45,
@@ -94,7 +94,7 @@ const HomePage = ({ isLoggedIn }) => {
       category: 'laptops',
       price: 1299,
       originalPrice: 1499,
-      image: 'https://via.placeholder.com/300x200?text=Dell+XPS+13',
+      image: 'https://m.media-amazon.com/images/I/710EGJBdIML._AC_UF894,1000_QL80_.jpg',
       rating: 4.7,
       reviews: 178,
       stock: 15,
@@ -107,7 +107,7 @@ const HomePage = ({ isLoggedIn }) => {
       category: 'smartphones',
       price: 899,
       originalPrice: 999,
-      image: 'https://via.placeholder.com/300x200?text=Samsung+S24',
+      image: 'https://assets.mmsrg.com/isr/166325/c1/-/ASSET_MMS_135895764?x=536&y=402&format=jpg&quality=80&sp=yes&strip=yes&trim&ex=536&ey=402&align=center&resizesource&unsharp=1.5x1+0.7+0.02&cox=0&coy=0&cdx=536&cdy=402',
       rating: 4.6,
       reviews: 421,
       stock: 30,
@@ -120,7 +120,7 @@ const HomePage = ({ isLoggedIn }) => {
       category: 'accessories',
       price: 149,
       originalPrice: 179,
-      image: 'https://via.placeholder.com/300x200?text=Magic+Keyboard',
+      image: 'https://encrypted-tbn0.gstatic.com/shopping?q=tbn:ANd9GcQG2ZyUQDDZ0BJLC2K5suq_HX3kVCS5VkvfgMJdXfxcI5Ehn0sCQkCnlK2FTRv9uPsbwE6EKl9GQyUoUJ9BCzw3c80mdjUEKth3YfvviZOJABR1yYqVJMKoXhUc',
       rating: 4.4,
       reviews: 95,
       stock: 50,
@@ -133,7 +133,7 @@ const HomePage = ({ isLoggedIn }) => {
       category: 'laptops',
       price: 849,
       originalPrice: 999,
-      image: 'https://via.placeholder.com/300x200?text=Lenovo+ThinkPad',
+      image: 'https://p1-ofp.static.pub/fes/cms/2023/02/13/5tlm0hunv3l71hzse5hlxsafgw4aw0954514.png',
       rating: 4.5,
       reviews: 156,
       stock: 20,
@@ -265,12 +265,12 @@ const HomePage = ({ isLoggedIn }) => {
             {filteredAndSortedProducts.map((product) => (
               <Grid item xs={12} sm={6} md={4} lg={3} key={product.id}>
                 <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column', transition: 'transform 0.3s, box-shadow 0.3s', '&:hover': { transform: 'translateY(-8px)', boxShadow: 6 } }}>
-                  <Box sx={{ position: 'relative' }}>
+                  <Box sx={{ position: 'relative', width: '100%', height: 160, overflow: 'hidden', bgcolor: '#f5f5f5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <CardMedia
                       component="img"
-                      height="200"
                       image={product.image}
                       alt={product.name}
+                      sx={{ maxHeight: '100%', maxWidth: '100%', objectFit: 'contain' }}
                     />
                     {product.discount > 0 && (
                       <Chip
