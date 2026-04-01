@@ -42,7 +42,7 @@ const HomePage = ({ isLoggedIn }) => {
       category: 'laptops',
       price: 1999,
       originalPrice: 2199,
-      image: 'https://via.placeholder.com/300x200?text=MacBook+Pro',
+      image: 'https://cdsassets.apple.com/live/SZLF0YNV/images/sp/111902_mbp14-silver2.png',
       rating: 4.8,
       reviews: 245,
       stock: 12,
@@ -55,7 +55,7 @@ const HomePage = ({ isLoggedIn }) => {
       category: 'smartphones',
       price: 999,
       originalPrice: 1099,
-      image: 'https://via.placeholder.com/300x200?text=iPhone+15+Pro',
+      image: 'https://cdsassets.apple.com/live/7WUAS350/images/tech-specs/iphone-15-pro-max.png',
       rating: 4.7,
       reviews: 512,
       stock: 25,
@@ -68,7 +68,7 @@ const HomePage = ({ isLoggedIn }) => {
       category: 'tablets',
       price: 599,
       originalPrice: 699,
-      image: 'https://via.placeholder.com/300x200?text=iPad+Air',
+      image: 'https://store.storeimages.cdn-apple.com/1/as-images.apple.com/is/ipad-air-finish-select-gallery-202405-13inch-blue-wifi?wid=5120&hei=2880&fmt=p-jpg&qlt=80&.v=SzlUeW5ITUpKK1FKdDdNS0xNUVhmM3hxSU9Rc1hENld5ZlZGbisxZU9hWGJrbFd6ZHBvVk05L3d0WWlJMkh3MEU1V0hVSjZLVHJGenZsOFVicTBNclV1ZnhKeHNGWFhISWx4Q0lTRXA4dkY5Q2drLzhtOFgzejV4MENrZ0JFZVBwak9PMXpaSGlQNVErR3pISzM5NVpB&traceId=1',
       rating: 4.5,
       reviews: 189,
       stock: 18,
@@ -81,7 +81,7 @@ const HomePage = ({ isLoggedIn }) => {
       category: 'accessories',
       price: 249,
       originalPrice: 299,
-      image: 'https://via.placeholder.com/300x200?text=AirPods+Pro',
+      image: 'https://productimages.hepsiburada.net/s/337/375-375/110000088116931.jpg',
       rating: 4.6,
       reviews: 328,
       stock: 45,
@@ -94,7 +94,7 @@ const HomePage = ({ isLoggedIn }) => {
       category: 'laptops',
       price: 1299,
       originalPrice: 1499,
-      image: 'https://via.placeholder.com/300x200?text=Dell+XPS+13',
+      image: 'https://m.media-amazon.com/images/I/710EGJBdIML._AC_UF894,1000_QL80_.jpg',
       rating: 4.7,
       reviews: 178,
       stock: 15,
@@ -107,7 +107,7 @@ const HomePage = ({ isLoggedIn }) => {
       category: 'smartphones',
       price: 899,
       originalPrice: 999,
-      image: 'https://via.placeholder.com/300x200?text=Samsung+S24',
+      image: 'https://assets.mmsrg.com/isr/166325/c1/-/ASSET_MMS_135895764?x=536&y=402&format=jpg&quality=80&sp=yes&strip=yes&trim&ex=536&ey=402&align=center&resizesource&unsharp=1.5x1+0.7+0.02&cox=0&coy=0&cdx=536&cdy=402',
       rating: 4.6,
       reviews: 421,
       stock: 30,
@@ -120,7 +120,7 @@ const HomePage = ({ isLoggedIn }) => {
       category: 'accessories',
       price: 149,
       originalPrice: 179,
-      image: 'https://via.placeholder.com/300x200?text=Magic+Keyboard',
+      image: 'https://cdn.vatanbilgisayar.com/Upload/PRODUCT/apple/thumb/148699-1_large.jpg',
       rating: 4.4,
       reviews: 95,
       stock: 50,
@@ -133,7 +133,7 @@ const HomePage = ({ isLoggedIn }) => {
       category: 'laptops',
       price: 849,
       originalPrice: 999,
-      image: 'https://via.placeholder.com/300x200?text=Lenovo+ThinkPad',
+      image: 'https://p1-ofp.static.pub/fes/cms/2023/02/13/5tlm0hunv3l71hzse5hlxsafgw4aw0954514.png',
       rating: 4.5,
       reviews: 156,
       stock: 20,
@@ -266,12 +266,14 @@ const HomePage = ({ isLoggedIn }) => {
               <Grid item xs={12} sm={6} md={4} lg={3} key={product.id}>
                 <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column', transition: 'transform 0.3s, box-shadow 0.3s', '&:hover': { transform: 'translateY(-8px)', boxShadow: 6 } }}>
                   <Box sx={{ position: 'relative' }}>
-                    <CardMedia
-                      component="img"
-                      height="200"
-                      image={product.image}
-                      alt={product.name}
-                    />
+                    <div className="product-image-container">
+                      <CardMedia
+                        component="img"
+                        image={product.image}
+                        alt={product.name}
+                        sx={{ maxHeight: '160px', maxWidth: '100%', objectFit: 'contain' }}
+                      />
+                    </div>
                     {product.discount > 0 && (
                       <Chip
                         label={`-${product.discount}%`}
