@@ -15,17 +15,23 @@ import {
   TextField,
   MenuItem,
   Paper,
+  Snackbar,
+  Alert,
 } from '@mui/material';
 import { ShoppingCart, FavoriteBorder, Favorite } from '@mui/icons-material';
+import { useCart } from '../context/CartContext';
 import '../styles/HomePage.css';
 
 const HomePage = ({ isLoggedIn }) => {
   const navigate = useNavigate();
+  const { addItem } = useCart();
   const [favorites, setFavorites] = useState([]);
-  const [cartCount, setCartCount] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState('popularity');
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
+  const [snackbarSeverity, setSnackbarSeverity] = useState('success');
 
   const categories = [
     { id: 1, name: 'All Products', value: 'all' },
@@ -156,12 +162,16 @@ const HomePage = ({ isLoggedIn }) => {
       return 0;
     });
 
-  const handleAddToCart = (productId) => {
-    if (!isLoggedIn) {
-      navigate('/login');
-      return;
-    }
-    setCartCount(cartCount + 1);
+  const handleAddToCart = (product) => {
+    // Allow adding to cart without login
+    addItem(product, 1);
+    setSnackbarMessage(`${product.name} added to cart!`);
+    setSnackbarSeverity('success');
+    setSnackbarOpen(true);
+  };
+
+  const handleSnackbarClose = () => {
+    setSnackbarOpen(false);
   };
 
   const toggleFavorite = (productId) => {
@@ -325,7 +335,7 @@ const HomePage = ({ isLoggedIn }) => {
                       fullWidth
                       variant="contained"
                       startIcon={<ShoppingCart />}
-                      onClick={() => handleAddToCart(product.id)}
+                      onClick={() => handleAddToCart(product)}
                       disabled={product.stock === 0}
                       sx={{ bgcolor: '#3498db', '&:hover': { bgcolor: '#2980b9' } }}
                     >
@@ -344,6 +354,18 @@ const HomePage = ({ isLoggedIn }) => {
           </Box>
         )}
       </Container>
+
+      {/* Snackbar for cart feedback */}
+      <Snackbar
+        open={snackbarOpen}
+        autoHideDuration={3000}
+        onClose={handleSnackbarClose}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+      >
+        <Alert onClose={handleSnackbarClose} severity={snackbarSeverity} sx={{ width: '100%' }}>
+          {snackbarMessage}
+        </Alert>
+      </Snackbar>
     </div>
   );
 };

@@ -18,10 +18,12 @@ import {
   Menu as MenuIcon,
   Logout as LogoutIcon,
 } from '@mui/icons-material';
+import { useCart } from '../context/CartContext';
 import '../styles/Header.css';
 
-const Header = ({ isLoggedIn, onLogout, cartCount = 0 }) => {
+const Header = ({ isLoggedIn, onLogout }) => {
   const navigate = useNavigate();
+  const { cartCount } = useCart();
   const [mobileMenuAnchor, setMobileMenuAnchor] = useState(null);
   const [userMenuAnchor, setUserMenuAnchor] = useState(null);
 
