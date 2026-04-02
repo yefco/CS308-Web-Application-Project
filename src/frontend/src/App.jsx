@@ -5,11 +5,13 @@ import Header from './components/Header';
 import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
 import SignUpPage from './pages/SignUpPage';
+import CartPage from './pages/CartPage';
+import { CartProvider, useCart } from './context/CartContext';
 import './App.css';
 
 function AppContent() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [cartCount, setCartCount] = useState(0);
+  const { mergeWithUserCart } = useCart();
   const location = useLocation();
 
   // Check auth state on mount and whenever location changes
@@ -17,10 +19,12 @@ function AppContent() {
     const savedLoginState = localStorage.getItem('isLoggedIn');
     if (savedLoginState === 'true') {
       setIsLoggedIn(true);
+      // Merge guest cart with user cart on login
+      mergeWithUserCart();
     } else {
       setIsLoggedIn(false);
     }
-  }, [location]);
+  }, [location, mergeWithUserCart]);
 
   const handleLogout = () => {
     setIsLoggedIn(false);
@@ -32,6 +36,8 @@ function AppContent() {
 
   const handleLoginSuccess = () => {
     setIsLoggedIn(true);
+    // Merge guest cart with user cart when login succeeds
+    mergeWithUserCart();
   };
 
   return (
@@ -39,8 +45,6 @@ function AppContent() {
       <Header 
         isLoggedIn={isLoggedIn} 
         onLogout={handleLogout}
-        cartCount={cartCount}
-        onSetCartCount={setCartCount}
       />
       
       <Box sx={{ flex: 1 }}>
@@ -48,6 +52,7 @@ function AppContent() {
           <Route path="/" element={<HomePage isLoggedIn={isLoggedIn} />} />
           <Route path="/login" element={<LoginPage onLoginSuccess={handleLoginSuccess} />} />
           <Route path="/signup" element={<SignUpPage onSignUpSuccess={handleLoginSuccess} />} />
+          <Route path="/cart" element={<CartPage isLoggedIn={isLoggedIn} />} />
         </Routes>
       </Box>
     </Box>
@@ -57,7 +62,9 @@ function AppContent() {
 function App() {
   return (
     <Router>
-      <AppContent />
+      <CartProvider>
+        <AppContent />
+      </CartProvider>
     </Router>
   );
 }
