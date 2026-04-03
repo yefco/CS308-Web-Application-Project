@@ -13,6 +13,7 @@
 mod config;
 mod database;
 mod handlers;
+mod middleware;
 mod models;
 mod repository;
 mod routes;
@@ -28,8 +29,9 @@ use tower_http::trace::TraceLayer;
 
 use crate::config::app_config::AppConfig;
 use crate::database::db;
-use crate::routes::auth_routes;
+use crate::routes::{auth_routes, cart_routes};
 use crate::services::auth_service::AuthService;
+use crate::services::cart_service::CartService;
 
 // ─── Shared Application State ────────────────────────────────
 
@@ -42,6 +44,8 @@ use crate::services::auth_service::AuthService;
 #[derive(Clone)]
 pub struct AppState {
     pub auth_service: AuthService,
+    pub cart_service: CartService,
+    pub jwt_secret: String,
 }
 
 // ─── Main ────────────────────────────────────────────────────
@@ -71,8 +75,13 @@ async fn main() {
         config.jwt_secret.clone(),
         config.jwt_expiration_hours,
     );
+    let cart_service = CartService::new(pool.clone());
 
-    let state = AppState { auth_service };
+    let state = AppState {
+        auth_service,
+        cart_service,
+        jwt_secret: config.jwt_secret.clone(),
+    };
 
     // ── Build router ─────────────────────────────────────────
     // CORS is configured to allow any origin during development.
@@ -84,6 +93,7 @@ async fn main() {
 
     let app = Router::new()
         .merge(auth_routes::routes())
+        .merge(cart_routes::routes())
         .layer(cors)
         .layer(TraceLayer::new_for_http())
         .with_state(state);
