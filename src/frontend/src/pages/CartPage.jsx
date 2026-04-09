@@ -82,7 +82,7 @@ const CartPage = ({ isLoggedIn }) => {
       navigate('/login', { state: { returnTo: '/cart' } });
       return;
     }
-    navigate('/payment');
+    navigate('/payment-methods');
   };
 
   if (items.length === 0) {
