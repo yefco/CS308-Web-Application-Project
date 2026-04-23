@@ -18,8 +18,9 @@ import {
   Snackbar,
   Alert,
 } from '@mui/material';
-import { ShoppingCart, FavoriteBorder, Favorite } from '@mui/icons-material';
+import { ShoppingCart, FavoriteBorder, Favorite, RateReview } from '@mui/icons-material';
 import { useCart } from '../context/CartContext';
+import RatingsModal from '../components/RatingsModal';
 import '../styles/HomePage.css';
 
 const HomePage = ({ isLoggedIn }) => {
@@ -32,6 +33,8 @@ const HomePage = ({ isLoggedIn }) => {
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarSeverity, setSnackbarSeverity] = useState('success');
+  const [ratingsModalOpen, setRatingsModalOpen] = useState(false);
+  const [selectedProductForRating, setSelectedProductForRating] = useState(null);
 
   const categories = [
     { id: 1, name: 'All Products', value: 'all' },
@@ -180,6 +183,22 @@ const HomePage = ({ isLoggedIn }) => {
     } else {
       setFavorites([...favorites, productId]);
     }
+  };
+
+  const handleOpenRatingsModal = (product) => {
+    setSelectedProductForRating(product);
+    setRatingsModalOpen(true);
+  };
+
+  const handleCloseRatingsModal = () => {
+    setRatingsModalOpen(false);
+    setSelectedProductForRating(null);
+  };
+
+  const handleRatingSuccess = () => {
+    setSnackbarMessage('Thank you for your rating!');
+    setSnackbarSeverity('success');
+    setSnackbarOpen(true);
   };
 
   return (
@@ -342,6 +361,17 @@ const HomePage = ({ isLoggedIn }) => {
                       Add to Cart
                     </Button>
                   </CardActions>
+                  <CardActions>
+                    <Button
+                      fullWidth
+                      variant="outlined"
+                      startIcon={<RateReview />}
+                      onClick={() => handleOpenRatingsModal(product)}
+                      sx={{ color: '#27ae60', borderColor: '#27ae60', '&:hover': { bgcolor: '#f0f8f4' } }}
+                    >
+                      Rate & Review
+                    </Button>
+                  </CardActions>
                 </Card>
               </Grid>
             ))}
@@ -354,6 +384,18 @@ const HomePage = ({ isLoggedIn }) => {
           </Box>
         )}
       </Container>
+
+      {/* Ratings Modal */}
+      {selectedProductForRating && (
+        <RatingsModal
+          open={ratingsModalOpen}
+          productId={selectedProductForRating.id}
+          productName={selectedProductForRating.name}
+          onClose={handleCloseRatingsModal}
+          onSuccess={handleRatingSuccess}
+          isLoggedIn={isLoggedIn}
+        />
+      )}
 
       {/* Snackbar for cart feedback */}
       <Snackbar
