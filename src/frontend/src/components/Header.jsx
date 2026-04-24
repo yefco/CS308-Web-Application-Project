@@ -17,6 +17,7 @@ import {
   AccountCircle,
   Menu as MenuIcon,
   Logout as LogoutIcon,
+  Dashboard,
 } from '@mui/icons-material';
 import { useCart } from '../context/CartContext';
 import '../styles/Header.css';
@@ -26,6 +27,16 @@ const Header = ({ isLoggedIn, onLogout }) => {
   const { cartCount } = useCart();
   const [mobileMenuAnchor, setMobileMenuAnchor] = useState(null);
   const [userMenuAnchor, setUserMenuAnchor] = useState(null);
+
+  const userRole = (() => {
+    try {
+      const raw = localStorage.getItem('userData');
+      return raw ? JSON.parse(raw).role : null;
+    } catch {
+      return null;
+    }
+  })();
+  const isProductManager = userRole === 'product_manager' || userRole === 'ProductManager';
 
   const handleMobileMenuOpen = (e) => setMobileMenuAnchor(e.currentTarget);
   const handleMobileMenuClose = () => setMobileMenuAnchor(null);
@@ -140,6 +151,15 @@ const Header = ({ isLoggedIn, onLogout }) => {
                     </Typography>
                   </MenuItem>
                   <MenuItem divider />
+                  {isProductManager && (
+                    <MenuItem
+                      onClick={() => { navigate('/product-manager'); handleUserMenuClose(); }}
+                      sx={{ color: '#3498db', fontWeight: 'bold' }}
+                    >
+                      <Dashboard sx={{ mr: 1, fontSize: '1.2rem' }} />
+                      Product Manager
+                    </MenuItem>
+                  )}
                   <MenuItem onClick={() => { navigate('/profile'); handleUserMenuClose(); }}>
                     My Profile
                   </MenuItem>
