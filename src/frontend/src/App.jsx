@@ -8,6 +8,7 @@ import SignUpPage from './pages/SignUpPage';
 import CartPage from './pages/CartPage';
 import PaymentMethodsPage from './pages/PaymentMethodsPage';
 import CommentApprovalPage from './pages/CommentApprovalPage';
+import OrderTrackingPage from './pages/OrderTrackingPage';
 import { CartProvider, useCart } from './context/CartContext';
 import './App.css';
 
@@ -56,8 +57,8 @@ function AppContent() {
           <Route path="/signup" element={<SignUpPage onSignUpSuccess={handleLoginSuccess} />} />
           <Route path="/cart" element={<CartPage isLoggedIn={isLoggedIn} />} />
           <Route path="/payment-methods" element={<PaymentMethodsPage isLoggedIn={isLoggedIn} />} />
+          <Route path="/order-tracking" element={<OrderTrackingPage isLoggedIn={isLoggedIn} />} />
           <Route path="/product-manager/comment-approval" element={<CommentApprovalPage />} />
-          
         </Routes>
       </Box>
     </Box>
