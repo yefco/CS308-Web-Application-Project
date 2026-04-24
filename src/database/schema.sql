@@ -76,6 +76,44 @@ CREATE TABLE shopping_carts (
         ON DELETE CASCADE
 );
 
+-- Create order_status enum
+CREATE TYPE order_status AS ENUM ('processing', 'in_transit', 'delivered');
+
+-- Create orders table
+CREATE TABLE orders (
+    order_id SERIAL PRIMARY KEY,
+    user_id INT NOT NULL,
+    status order_status NOT NULL DEFAULT 'processing',
+    delivery_address TEXT NOT NULL,
+    total_amount NUMERIC(10,2) NOT NULL CHECK (total_amount >= 0),
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_orders_user
+        FOREIGN KEY (user_id)
+        REFERENCES users(user_id)
+        ON DELETE RESTRICT
+);
+
+-- Create order_items table
+CREATE TABLE order_items (
+    order_item_id SERIAL PRIMARY KEY,
+    order_id INT NOT NULL,
+    product_id INT NOT NULL,
+    quantity INT NOT NULL CHECK (quantity > 0),
+    unit_price NUMERIC(10,2) NOT NULL CHECK (unit_price >= 0),
+
+    CONSTRAINT fk_order_items_order
+        FOREIGN KEY (order_id)
+        REFERENCES orders(order_id)
+        ON DELETE CASCADE,
+
+    CONSTRAINT fk_order_items_product
+        FOREIGN KEY (product_id)
+        REFERENCES products(product_id)
+        ON DELETE RESTRICT
+);
+
 -- Create cart_items table
 CREATE TABLE cart_items (
     cart_item_id SERIAL PRIMARY KEY,
