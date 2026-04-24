@@ -4,7 +4,7 @@ use crate::models::order::{
     OrderItemResponse, OrderResponse, OrderStatus, OrderSummaryResponse, OrdersResponse,
     PlaceOrderRequest,
 };
-use crate::repository::{cart_repository, order_repository, user_repository};
+use crate::repository::{cart_repository, order_repository, product_repository, user_repository};
 use crate::utils::errors::AppError;
 
 #[derive(Clone)]
@@ -31,16 +31,19 @@ impl OrderService {
                 let user = user_repository::find_by_id(&self.pool, user_id)
                     .await?
                     .ok_or_else(|| AppError::NotFound("User not found".into()))?;
-                user.home_address
-                    .ok_or_else(|| AppError::BadRequest(
+                user.home_address.ok_or_else(|| {
+                    AppError::BadRequest(
                         "No delivery address provided and no home address on file".into(),
-                    ))?
+                    )
+                })?
             }
         };
 
-        // Load cart
-        let cart_id = cart_repository::get_or_create_user_cart(&self.pool, user_id).await?;
-        let cart_items = cart_repository::get_cart_items(&self.pool, cart_id).await?;
+        let mut tx = self.pool.begin().await?;
+
+        // Load cart within the checkout transaction.
+        let cart_id = cart_repository::get_or_create_user_cart_in_tx(&mut tx, user_id).await?;
+        let cart_items = cart_repository::get_cart_items_in_tx(&mut tx, cart_id).await?;
 
         if cart_items.is_empty() {
             return Err(AppError::BadRequest("Cart is empty".into()));
@@ -52,19 +55,37 @@ impl OrderService {
             .map(|item| item.price * item.quantity as f64)
             .sum();
 
+        // Reserve stock atomically before creating the order.
+        for item in &cart_items {
+            let updated_product =
+                product_repository::decrement_stock_in_tx(&mut tx, item.product_id, item.quantity)
+                    .await?;
+
+            if updated_product.is_none() {
+                let product =
+                    product_repository::find_product_in_tx(&mut tx, item.product_id).await?;
+                return match product {
+                    Some(product) => Err(AppError::Conflict(format!(
+                        "Insufficient stock for '{}' (requested {}, available {})",
+                        product.product_name, item.quantity, product.stock_quantity
+                    ))),
+                    None => Err(AppError::NotFound(format!(
+                        "Product {} no longer exists",
+                        item.product_id
+                    ))),
+                };
+            }
+        }
+
         // Persist order
-        let order = order_repository::create_order(
-            &self.pool,
-            user_id,
-            &delivery_address,
-            total_amount,
-        )
-        .await?;
+        let order =
+            order_repository::create_order_in_tx(&mut tx, user_id, &delivery_address, total_amount)
+                .await?;
 
         // Persist order items
         for item in &cart_items {
-            order_repository::create_order_items(
-                &self.pool,
+            order_repository::create_order_items_in_tx(
+                &mut tx,
                 order.order_id,
                 item.product_id,
                 item.quantity,
@@ -74,7 +95,8 @@ impl OrderService {
         }
 
         // Clear cart
-        cart_repository::clear_cart(&self.pool, cart_id).await?;
+        cart_repository::clear_cart_in_tx(&mut tx, cart_id).await?;
+        tx.commit().await?;
 
         // Build response
         let items = cart_items
@@ -118,11 +140,7 @@ impl OrderService {
     }
 
     /// Returns the full order detail (with items) for the authenticated customer.
-    pub async fn get_order(
-        &self,
-        user_id: i32,
-        order_id: i32,
-    ) -> Result<OrderResponse, AppError> {
+    pub async fn get_order(&self, user_id: i32, order_id: i32) -> Result<OrderResponse, AppError> {
         let order = order_repository::find_user_order(&self.pool, user_id, order_id)
             .await?
             .ok_or_else(|| AppError::NotFound("Order not found".into()))?;

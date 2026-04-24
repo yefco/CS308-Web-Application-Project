@@ -1,9 +1,9 @@
-use sqlx::PgPool;
+use sqlx::{PgPool, Postgres, Transaction};
 
 use crate::models::order::{Order, OrderItem, OrderStatus};
 
-pub async fn create_order(
-    pool: &PgPool,
+pub async fn create_order_in_tx(
+    tx: &mut Transaction<'_, Postgres>,
     user_id: i32,
     delivery_address: &str,
     total_amount: f64,
@@ -19,12 +19,12 @@ pub async fn create_order(
     .bind(user_id)
     .bind(delivery_address)
     .bind(total_amount)
-    .fetch_one(pool)
+    .fetch_one(&mut **tx)
     .await
 }
 
-pub async fn create_order_items(
-    pool: &PgPool,
+pub async fn create_order_items_in_tx(
+    tx: &mut Transaction<'_, Postgres>,
     order_id: i32,
     product_id: i32,
     quantity: i32,
@@ -40,15 +40,12 @@ pub async fn create_order_items(
     .bind(product_id)
     .bind(quantity)
     .bind(unit_price)
-    .execute(pool)
+    .execute(&mut **tx)
     .await
     .map(|_| ())
 }
 
-pub async fn get_order_items(
-    pool: &PgPool,
-    order_id: i32,
-) -> Result<Vec<OrderItem>, sqlx::Error> {
+pub async fn get_order_items(pool: &PgPool, order_id: i32) -> Result<Vec<OrderItem>, sqlx::Error> {
     sqlx::query_as::<_, OrderItem>(
         r#"
         SELECT oi.order_item_id, oi.order_id, oi.product_id, oi.quantity,
@@ -64,10 +61,7 @@ pub async fn get_order_items(
     .await
 }
 
-pub async fn list_user_orders(
-    pool: &PgPool,
-    user_id: i32,
-) -> Result<Vec<Order>, sqlx::Error> {
+pub async fn list_user_orders(pool: &PgPool, user_id: i32) -> Result<Vec<Order>, sqlx::Error> {
     sqlx::query_as::<_, Order>(
         r#"
         SELECT order_id, user_id, status, delivery_address,
@@ -101,10 +95,7 @@ pub async fn find_user_order(
     .await
 }
 
-pub async fn find_order_by_id(
-    pool: &PgPool,
-    order_id: i32,
-) -> Result<Option<Order>, sqlx::Error> {
+pub async fn find_order_by_id(pool: &PgPool, order_id: i32) -> Result<Option<Order>, sqlx::Error> {
     sqlx::query_as::<_, Order>(
         r#"
         SELECT order_id, user_id, status, delivery_address,

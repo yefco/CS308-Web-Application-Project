@@ -1,4 +1,4 @@
-use sqlx::PgPool;
+use sqlx::{PgPool, Postgres, Transaction};
 
 use crate::models::product::{Category, Product};
 
@@ -12,7 +12,10 @@ pub async fn list_categories(pool: &PgPool) -> Result<Vec<Category>, sqlx::Error
     .await
 }
 
-pub async fn find_category(pool: &PgPool, category_id: i32) -> Result<Option<Category>, sqlx::Error> {
+pub async fn find_category(
+    pool: &PgPool,
+    category_id: i32,
+) -> Result<Option<Category>, sqlx::Error> {
     sqlx::query_as::<_, Category>(
         "SELECT category_id, category_name, description FROM categories WHERE category_id = $1",
     )
@@ -96,6 +99,24 @@ pub async fn find_product(pool: &PgPool, product_id: i32) -> Result<Option<Produ
     )
     .bind(product_id)
     .fetch_optional(pool)
+    .await
+}
+
+pub async fn find_product_in_tx(
+    tx: &mut Transaction<'_, Postgres>,
+    product_id: i32,
+) -> Result<Option<Product>, sqlx::Error> {
+    sqlx::query_as::<_, Product>(
+        r#"
+        SELECT product_id, category_id, product_name, model, serial_number,
+               description, stock_quantity, price::FLOAT8 AS price,
+               warranty_status, distributor_info, created_at
+        FROM products
+        WHERE product_id = $1
+        "#,
+    )
+    .bind(product_id)
+    .fetch_optional(&mut **tx)
     .await
 }
 
@@ -196,6 +217,28 @@ pub async fn update_stock(
     .bind(product_id)
     .bind(stock_quantity)
     .fetch_optional(pool)
+    .await
+}
+
+pub async fn decrement_stock_in_tx(
+    tx: &mut Transaction<'_, Postgres>,
+    product_id: i32,
+    quantity: i32,
+) -> Result<Option<Product>, sqlx::Error> {
+    sqlx::query_as::<_, Product>(
+        r#"
+        UPDATE products
+        SET stock_quantity = stock_quantity - $2
+        WHERE product_id = $1
+          AND stock_quantity >= $2
+        RETURNING product_id, category_id, product_name, model, serial_number,
+                  description, stock_quantity, price::FLOAT8 AS price,
+                  warranty_status, distributor_info, created_at
+        "#,
+    )
+    .bind(product_id)
+    .bind(quantity)
+    .fetch_optional(&mut **tx)
     .await
 }
 
