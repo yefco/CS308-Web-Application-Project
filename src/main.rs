@@ -29,9 +29,10 @@ use tower_http::trace::TraceLayer;
 
 use crate::config::app_config::AppConfig;
 use crate::database::db;
-use crate::routes::{auth_routes, cart_routes, payment_routes};
+use crate::routes::{auth_routes, cart_routes, order_routes, payment_routes};
 use crate::services::auth_service::AuthService;
 use crate::services::cart_service::CartService;
+use crate::services::order_service::OrderService;
 use crate::services::payment_service::PaymentService;
 
 // ─── Shared Application State ────────────────────────────────
@@ -46,6 +47,7 @@ use crate::services::payment_service::PaymentService;
 pub struct AppState {
     pub auth_service: AuthService,
     pub cart_service: CartService,
+    pub order_service: OrderService,
     pub payment_service: PaymentService,
     pub jwt_secret: String,
 }
@@ -78,11 +80,13 @@ async fn main() {
         config.jwt_expiration_hours,
     );
     let cart_service = CartService::new(pool.clone());
+    let order_service = OrderService::new(pool.clone());
     let payment_service = PaymentService::new(pool.clone());
 
     let state = AppState {
         auth_service,
         cart_service,
+        order_service,
         payment_service,
         jwt_secret: config.jwt_secret.clone(),
     };
@@ -98,6 +102,7 @@ async fn main() {
     let app = Router::new()
         .merge(auth_routes::routes())
         .merge(cart_routes::routes())
+        .merge(order_routes::routes())
         .merge(payment_routes::routes())
         .layer(cors)
         .layer(TraceLayer::new_for_http())
