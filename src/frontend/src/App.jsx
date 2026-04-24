@@ -59,7 +59,6 @@ function AppContent() {
           <Route path="/payment-methods" element={<PaymentMethodsPage isLoggedIn={isLoggedIn} />} />
           <Route path="/order-tracking" element={<OrderTrackingPage isLoggedIn={isLoggedIn} />} />
           <Route path="/product-manager/comment-approval" element={<CommentApprovalPage />} />
-          
         </Routes>
       </Box>
     </Box>
