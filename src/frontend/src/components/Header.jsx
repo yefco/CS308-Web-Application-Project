@@ -163,8 +163,8 @@ const Header = ({ isLoggedIn, onLogout }) => {
                   <MenuItem onClick={() => { navigate('/profile'); handleUserMenuClose(); }}>
                     My Profile
                   </MenuItem>
-                  <MenuItem onClick={() => { navigate('/orders'); handleUserMenuClose(); }}>
-                    My Orders
+                  <MenuItem onClick={() => { navigate('/order-tracking'); handleUserMenuClose(); }}>
+                    Track Orders
                   </MenuItem>
                   <MenuItem onClick={() => { navigate('/wishlist'); handleUserMenuClose(); }}>
                     Wishlist
