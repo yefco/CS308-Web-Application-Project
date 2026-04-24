@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Container,
@@ -17,10 +17,23 @@ import {
   Paper,
   Snackbar,
   Alert,
+  CircularProgress,
 } from '@mui/material';
 import { ShoppingCart, FavoriteBorder, Favorite } from '@mui/icons-material';
 import { useCart } from '../context/CartContext';
 import '../styles/HomePage.css';
+
+// Fallback images by product name
+const PRODUCT_IMAGES = {
+  'MacBook Pro 14"': 'https://cdsassets.apple.com/live/SZLF0YNV/images/sp/111902_mbp14-silver2.png',
+  'iPhone 15 Pro': 'https://cdsassets.apple.com/live/7WUAS350/images/tech-specs/iphone-15-pro-max.png',
+  'iPad Air': 'https://store.storeimages.cdn-apple.com/1/as-images.apple.com/is/ipad-air-finish-select-gallery-202405-13inch-blue-wifi?wid=5120&hei=2880&fmt=p-jpg&qlt=80&sp=yes&strip=yes&trim&ex=536&ey=402&align=center&resizesource&unsharp=1.5x1+0.7+0.02&cox=0&coy=0&cdx=536&cdy=402',
+  'AirPods Pro': 'https://productimages.hepsiburada.net/s/337/375-375/110000088116931.jpg',
+  'Dell XPS 13': 'https://m.media-amazon.com/images/I/710EGJBdIML._AC_UF894,1000_QL80_.jpg',
+  'Samsung Galaxy S24': 'https://assets.mmsrg.com/isr/166325/c1/-/ASSET_MMS_135895764?x=536&y=402&format=jpg&quality=80&sp=yes&strip=yes&trim&ex=536&ey=402&align=center&resizesource&unsharp=1.5x1+0.7+0.02&cox=0&coy=0&cdx=536&cdy=402',
+  'Magic Keyboard': 'https://cdn.vatanbilgisayar.com/Upload/PRODUCT/apple/thumb/148699-1_large.jpg',
+  'Lenovo ThinkPad': 'https://p1-ofp.static.pub/fes/cms/2023/02/13/5tlm0hunv3l71hzse5hlxsafgw4aw0954514.png',
+};
 
 const HomePage = ({ isLoggedIn }) => {
   const navigate = useNavigate();
@@ -32,120 +45,50 @@ const HomePage = ({ isLoggedIn }) => {
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarSeverity, setSnackbarSeverity] = useState('success');
+  const [products, setProducts] = useState([]);
+  const [apiCategories, setApiCategories] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        const [productsRes, categoriesRes] = await Promise.all([
+          fetch('/api/products'),
+          fetch('/api/categories'),
+        ]);
+        const productsData = await productsRes.json();
+        const categoriesData = await categoriesRes.json();
+
+        const rawProducts = Array.isArray(productsData) ? productsData : (productsData.products ?? []);
+        const rawCategories = Array.isArray(categoriesData) ? categoriesData : (categoriesData.categories ?? []);
+
+        setApiCategories(rawCategories);
+        setProducts(rawProducts.map(p => ({
+          id: p.product_id,
+          name: p.product_name,
+          category: rawCategories.find(c => c.category_id === p.category_id)?.category_name ?? '',
+          price: parseFloat(p.price),
+          originalPrice: parseFloat(p.price),
+          image: PRODUCT_IMAGES[p.product_name] || 'https://via.placeholder.com/300x200?text=No+Image',
+          rating: 4.5,
+          reviews: 0,
+          stock: p.stock_quantity,
+          discount: 0,
+          description: p.description ?? '',
+        })));
+      } catch {
+        setProducts([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
 
   const categories = [
-    { id: 1, name: 'All Products', value: 'all' },
-    { id: 2, name: 'Laptops', value: 'laptops' },
-    { id: 3, name: 'Smartphones', value: 'smartphones' },
-    { id: 4, name: 'Tablets', value: 'tablets' },
-    { id: 5, name: 'Accessories', value: 'accessories' },
-  ];
-
-  const products = [
-    {
-      id: 1,
-      name: 'MacBook Pro 14"',
-      category: 'laptops',
-      price: 1999,
-      originalPrice: 2199,
-      image: 'https://cdsassets.apple.com/live/SZLF0YNV/images/sp/111902_mbp14-silver2.png',
-      rating: 4.8,
-      reviews: 245,
-      stock: 12,
-      discount: 9,
-      description: 'High-performance laptop with M3 Max chip',
-    },
-    {
-      id: 2,
-      name: 'iPhone 15 Pro',
-      category: 'smartphones',
-      price: 999,
-      originalPrice: 1099,
-      image: 'https://cdsassets.apple.com/live/7WUAS350/images/tech-specs/iphone-15-pro-max.png',
-      rating: 4.7,
-      reviews: 512,
-      stock: 25,
-      discount: 9,
-      description: 'Latest flagship smartphone with advanced camera',
-    },
-    {
-      id: 3,
-      name: 'iPad Air',
-      category: 'tablets',
-      price: 599,
-      originalPrice: 699,
-      image: 'https://store.storeimages.cdn-apple.com/1/as-images.apple.com/is/ipad-air-finish-select-gallery-202405-13inch-blue-wifi?wid=5120&hei=2880&fmt=p-jpg&qlt=80&.v=SzlUeW5ITUpKK1FKdDdNS0xNUVhmM3hxSU9Rc1hENld5ZlZGbisxZU9hWGJrbFd6ZHBvVk05L3d0WWlJMkh3MEU1V0hVSjZLVHJGenZsOFVicTBNclV1ZnhKeHNGWFhISWx4Q0lTRXA4dkY5Q2drLzhtOFgzejV4MENrZ0JFZVBwak9PMXpaSGlQNVErR3pISzM5NVpB&traceId=1',
-      rating: 4.5,
-      reviews: 189,
-      stock: 18,
-      discount: 14,
-      description: 'Versatile tablet perfect for work and creativity',
-    },
-    {
-      id: 4,
-      name: 'AirPods Pro',
-      category: 'accessories',
-      price: 249,
-      originalPrice: 299,
-      image: 'https://productimages.hepsiburada.net/s/337/375-375/110000088116931.jpg',
-      rating: 4.6,
-      reviews: 328,
-      stock: 45,
-      discount: 17,
-      description: 'Premium wireless earbuds with noise cancellation',
-    },
-    {
-      id: 5,
-      name: 'Dell XPS 13',
-      category: 'laptops',
-      price: 1299,
-      originalPrice: 1499,
-      image: 'https://m.media-amazon.com/images/I/710EGJBdIML._AC_UF894,1000_QL80_.jpg',
-      rating: 4.7,
-      reviews: 178,
-      stock: 15,
-      discount: 13,
-      description: 'Ultrabook with stunning display and portability',
-    },
-    {
-      id: 6,
-      name: 'Samsung Galaxy S24',
-      category: 'smartphones',
-      price: 899,
-      originalPrice: 999,
-      image: 'https://assets.mmsrg.com/isr/166325/c1/-/ASSET_MMS_135895764?x=536&y=402&format=jpg&quality=80&sp=yes&strip=yes&trim&ex=536&ey=402&align=center&resizesource&unsharp=1.5x1+0.7+0.02&cox=0&coy=0&cdx=536&cdy=402',
-      rating: 4.6,
-      reviews: 421,
-      stock: 30,
-      discount: 10,
-      description: 'Powerful Android flagship with excellent display',
-    },
-    {
-      id: 7,
-      name: 'Magic Keyboard',
-      category: 'accessories',
-      price: 149,
-      originalPrice: 179,
-      image: 'https://cdn.vatanbilgisayar.com/Upload/PRODUCT/apple/thumb/148699-1_large.jpg',
-      rating: 4.4,
-      reviews: 95,
-      stock: 50,
-      discount: 17,
-      description: 'Wireless keyboard for seamless typing experience',
-    },
-    {
-      id: 8,
-      name: 'Lenovo ThinkPad',
-      category: 'laptops',
-      price: 849,
-      originalPrice: 999,
-      image: 'https://p1-ofp.static.pub/fes/cms/2023/02/13/5tlm0hunv3l71hzse5hlxsafgw4aw0954514.png',
-      rating: 4.5,
-      reviews: 156,
-      stock: 20,
-      discount: 15,
-      description: 'Business laptop with reliability and performance',
-    },
+    { id: 0, name: 'All Products', value: 'all' },
+    ...apiCategories.map(c => ({ id: c.category_id, name: c.category_name, value: c.category_name })),
   ];
 
   const filteredAndSortedProducts = products
@@ -163,7 +106,6 @@ const HomePage = ({ isLoggedIn }) => {
     });
 
   const handleAddToCart = (product) => {
-    // Allow adding to cart without login
     addItem(product, 1);
     setSnackbarMessage(`${product.name} added to cart!`);
     setSnackbarSeverity('success');
@@ -270,7 +212,11 @@ const HomePage = ({ isLoggedIn }) => {
         </Paper>
 
         {/* Products Grid */}
-        {filteredAndSortedProducts.length > 0 ? (
+        {loading ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
+            <CircularProgress />
+          </Box>
+        ) : filteredAndSortedProducts.length > 0 ? (
           <Grid container spacing={3}>
             {filteredAndSortedProducts.map((product) => (
               <Grid item xs={12} sm={6} md={4} lg={3} key={product.id}>
@@ -318,13 +264,8 @@ const HomePage = ({ isLoggedIn }) => {
                     </Box>
                     <Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
                       <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#27ae60' }}>
-                        ${product.price}
+                        ${product.price.toFixed(2)}
                       </Typography>
-                      {product.originalPrice > product.price && (
-                        <Typography variant="body2" sx={{ textDecoration: 'line-through', color: '#7f8c8d' }}>
-                          ${product.originalPrice}
-                        </Typography>
-                      )}
                     </Box>
                     <Typography variant="body2" color={product.stock > 5 ? '#27ae60' : '#e74c3c'}>
                       {product.stock > 0 ? `${product.stock} in stock` : 'Out of stock'}

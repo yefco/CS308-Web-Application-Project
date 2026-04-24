@@ -576,7 +576,7 @@ const ProductManagerPage = () => {
     if (!raw) { navigate('/login'); return; }
     try {
       const user = JSON.parse(raw);
-      if (user.role !== 'product_manager') {
+      if (user.role !== 'product_manager' && user.role !== 'ProductManager') {
         navigate('/');
       }
     } catch {

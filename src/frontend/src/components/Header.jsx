@@ -36,7 +36,7 @@ const Header = ({ isLoggedIn, onLogout }) => {
       return null;
     }
   })();
-  const isProductManager = userRole === 'product_manager';
+  const isProductManager = userRole === 'product_manager' || userRole === 'ProductManager';
 
   const handleMobileMenuOpen = (e) => setMobileMenuAnchor(e.currentTarget);
   const handleMobileMenuClose = () => setMobileMenuAnchor(null);
