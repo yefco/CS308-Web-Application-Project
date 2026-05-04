@@ -1,26 +1,29 @@
 import React, { useEffect, useState } from 'react';
 import {
-  Container,
-  Grid,
-  Card,
-  CardContent,
-  Typography,
   Box,
+  Typography,
   Button,
   Alert,
   CircularProgress,
   Chip,
-  Divider,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
   Paper,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Tooltip,
+  IconButton,
 } from '@mui/material';
 import {
   CheckCircle as CheckCircleIcon,
   Cancel as CancelIcon,
-  Comment as CommentIcon,
+  Refresh,
 } from '@mui/icons-material';
 import {
   getPendingComments,
@@ -37,7 +40,7 @@ const CommentApprovalPage = () => {
   const [successMessage, setSuccessMessage] = useState('');
 
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [dialogAction, setDialogAction] = useState(null); // 'approve' | 'reject'
+  const [dialogAction, setDialogAction] = useState(null);
   const [selectedComment, setSelectedComment] = useState(null);
 
   const loadPendingComments = async () => {
@@ -45,8 +48,7 @@ const CommentApprovalPage = () => {
       setLoading(true);
       setErrorMessage('');
       const response = await getPendingComments();
-      const pendingComments = response.comments || [];
-      setComments(pendingComments);
+      setComments(response.comments || []);
     } catch (error) {
       setErrorMessage(error.message || 'Failed to load pending comments.');
     } finally {
@@ -103,227 +105,171 @@ const CommentApprovalPage = () => {
   const pendingCount = comments.length;
 
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
-      <Box sx={{ mb: 4 }}>
-        <Typography variant="h2" sx={{ fontWeight: 'bold', color: '#2c3e50', mb: 1 }}>
+    <>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2, flexWrap: 'wrap', gap: 1 }}>
+        <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
           Comment Approval
         </Typography>
-        <Typography variant="body1" sx={{ color: '#7f8c8d' }}>
-          Review pending customer comments and decide whether they should become visible.
-        </Typography>
+
+        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+          <Chip
+            label={`${pendingCount} pending`}
+            color={pendingCount > 0 ? 'warning' : 'success'}
+            size="small"
+          />
+
+          <Button
+            startIcon={<Refresh />}
+            onClick={loadPendingComments}
+            variant="outlined"
+            size="small"
+          >
+            Refresh
+          </Button>
+        </Box>
       </Box>
 
       {errorMessage && (
-        <Alert severity="error" sx={{ mb: 3 }}>
+        <Alert severity="error" sx={{ mb: 2 }}>
           {errorMessage}
         </Alert>
       )}
 
       {successMessage && (
-        <Alert severity="success" sx={{ mb: 3 }}>
+        <Alert severity="success" sx={{ mb: 2 }}>
           {successMessage}
         </Alert>
       )}
 
-      <Grid container spacing={3}>
-        <Grid item xs={12} md={8}>
-          <Card sx={{ boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
-            <CardContent>
-              <Typography variant="h4" sx={{ fontWeight: 'bold', mb: 3, color: '#2c3e50' }}>
-                Pending Comments
-              </Typography>
+      {loading ? (
+        <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
+          <CircularProgress />
+        </Box>
+      ) : (
+        <TableContainer component={Paper} elevation={2}>
+          <Table size="small">
+            <TableHead sx={{ bgcolor: '#2c3e50' }}>
+              <TableRow>
+                {['ID', 'Product', 'Customer', 'Comment', 'Rating', 'Date', 'Status', 'Actions'].map(
+                  (h) => (
+                    <TableCell key={h} sx={{ color: '#fff', fontWeight: 'bold' }}>
+                      {h}
+                    </TableCell>
+                  ),
+                )}
+              </TableRow>
+            </TableHead>
 
-              {loading ? (
-                <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
-                  <CircularProgress />
-                </Box>
-              ) : comments.length === 0 ? (
-                <Paper elevation={0} sx={{ p: 4, textAlign: 'center', bgcolor: '#f8f9fa' }}>
-                  <CommentIcon sx={{ fontSize: 48, color: '#bdc3c7', mb: 1 }} />
-                  <Typography variant="h6" sx={{ color: '#2c3e50', mb: 1 }}>
-                    No pending comments
-                  </Typography>
-                  <Typography variant="body2" sx={{ color: '#7f8c8d' }}>
-                    There are currently no comments waiting for approval.
-                  </Typography>
-                </Paper>
+            <TableBody>
+              {comments.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={8} align="center" sx={{ py: 4, color: '#7f8c8d' }}>
+                    No pending comments found
+                  </TableCell>
+                </TableRow>
               ) : (
-                <Grid container spacing={2}>
-                  {comments.map((comment) => {
-                    const isActionLoading = actionLoadingId === comment.comment_id;
+                comments.map((comment) => {
+                  const isActionLoading = actionLoadingId === comment.comment_id;
 
-                    return (
-                      <Grid item xs={12} key={comment.comment_id}>
-                        <Card
-                          sx={{
-                            border: '1px solid #e0e0e0',
-                            boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
-                            borderRadius: 2,
-                          }}
-                        >
-                          <CardContent>
-                            <Box
-                              sx={{
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                alignItems: 'flex-start',
-                                gap: 2,
-                                mb: 2,
-                                flexWrap: 'wrap',
-                              }}
+                  return (
+                    <TableRow key={comment.comment_id} hover>
+                      <TableCell>{comment.comment_id}</TableCell>
+
+                      <TableCell sx={{ fontWeight: 500 }}>
+                        {comment.product_name || '—'}
+                      </TableCell>
+
+                      <TableCell>
+                        {comment.customer_name || '—'}
+                      </TableCell>
+
+                      <TableCell
+                        sx={{
+                          maxWidth: 360,
+                          whiteSpace: 'normal',
+                          color: '#2c3e50',
+                        }}
+                      >
+                        {comment.comment_text || '—'}
+                      </TableCell>
+
+                      <TableCell>
+                        <Chip
+                          label={`${comment.rating}/5`}
+                          color="primary"
+                          size="small"
+                          variant="outlined"
+                        />
+                      </TableCell>
+
+                      <TableCell>
+                        {comment.created_at
+                          ? new Date(comment.created_at).toLocaleString()
+                          : '—'}
+                      </TableCell>
+
+                      <TableCell>
+                        <Chip
+                          label="Pending"
+                          color="warning"
+                          size="small"
+                        />
+                      </TableCell>
+
+                      <TableCell>
+                        <Tooltip title="Approve">
+                          <span>
+                            <IconButton
+                              size="small"
+                              onClick={() => openActionDialog(comment, 'approve')}
+                              disabled={isActionLoading}
+                              sx={{ color: '#27ae60' }}
                             >
-                              <Box>
-                                <Typography
-                                  variant="h6"
-                                  sx={{ fontWeight: 'bold', color: '#2c3e50' }}
-                                >
-                                  {comment.product_name}
-                                </Typography>
-                                <Typography variant="body2" sx={{ color: '#7f8c8d' }}>
-                                  Customer: {comment.customer_name}
-                                </Typography>
-                              </Box>
+                              <CheckCircleIcon fontSize="small" />
+                            </IconButton>
+                          </span>
+                        </Tooltip>
 
-                              <Chip
-                                label="Pending"
-                                sx={{
-                                  bgcolor: '#f39c12',
-                                  color: 'white',
-                                  fontWeight: 'bold',
-                                }}
-                              />
-                            </Box>
-
-                            <Typography
-                              variant="body1"
-                              sx={{
-                                color: '#2c3e50',
-                                mb: 2,
-                                lineHeight: 1.7,
-                                whiteSpace: 'pre-wrap',
-                              }}
+                        <Tooltip title="Reject">
+                          <span>
+                            <IconButton
+                              size="small"
+                              onClick={() => openActionDialog(comment, 'reject')}
+                              disabled={isActionLoading}
+                              sx={{ color: '#e74c3c' }}
                             >
-                              {comment.comment_text}
-                            </Typography>
-
-                            <Box
-                              sx={{
-                                display: 'flex',
-                                gap: 3,
-                                flexWrap: 'wrap',
-                                mb: 2,
-                              }}
-                            >
-                              <Typography variant="body2" sx={{ color: '#7f8c8d' }}>
-                                <strong>Rating:</strong> {comment.rating}/5
-                              </Typography>
-                              <Typography variant="body2" sx={{ color: '#7f8c8d' }}>
-                                <strong>Comment ID:</strong> {comment.comment_id}
-                              </Typography>
-                              <Typography variant="body2" sx={{ color: '#7f8c8d' }}>
-                                <strong>Date:</strong>{' '}
-                                {new Date(comment.created_at).toLocaleString()}
-                              </Typography>
-                            </Box>
-
-                            <Divider sx={{ my: 2 }} />
-
-                            <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-                              <Button
-                                variant="contained"
-                                startIcon={<CheckCircleIcon />}
-                                onClick={() => openActionDialog(comment, 'approve')}
-                                disabled={isActionLoading}
-                                sx={{
-                                  bgcolor: '#27ae60',
-                                  '&:hover': { bgcolor: '#229954' },
-                                  fontWeight: 'bold',
-                                  minWidth: 140,
-                                }}
-                              >
-                                {isActionLoading ? 'Processing...' : 'Approve'}
-                              </Button>
-
-                              <Button
-                                variant="outlined"
-                                color="error"
-                                startIcon={<CancelIcon />}
-                                onClick={() => openActionDialog(comment, 'reject')}
-                                disabled={isActionLoading}
-                                sx={{ fontWeight: 'bold', minWidth: 140 }}
-                              >
-                                Reject
-                              </Button>
-                            </Box>
-                          </CardContent>
-                        </Card>
-                      </Grid>
-                    );
-                  })}
-                </Grid>
+                              <CancelIcon fontSize="small" />
+                            </IconButton>
+                          </span>
+                        </Tooltip>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
               )}
-            </CardContent>
-          </Card>
-        </Grid>
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
 
-        <Grid item xs={12} md={4}>
-          <Card
-            sx={{
-              position: 'sticky',
-              top: 20,
-              boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-            }}
-          >
-            <CardContent>
-              <Typography variant="h4" sx={{ fontWeight: 'bold', mb: 3, color: '#2c3e50' }}>
-                Summary
-              </Typography>
-
-              <Box sx={{ mb: 2 }}>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1.5 }}>
-                  <Typography sx={{ color: '#7f8c8d' }}>Pending Comments:</Typography>
-                  <Typography sx={{ fontWeight: 'bold' }}>{pendingCount}</Typography>
-                </Box>
-
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1.5 }}>
-                  <Typography sx={{ color: '#7f8c8d' }}>Role:</Typography>
-                  <Typography sx={{ fontWeight: 'bold' }}>Product Manager</Typography>
-                </Box>
-
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1.5 }}>
-                  <Typography sx={{ color: '#7f8c8d' }}>Status:</Typography>
-                  <Typography sx={{ fontWeight: 'bold', color: '#f39c12' }}>
-                    Review Required
-                  </Typography>
-                </Box>
-              </Box>
-
-              <Divider sx={{ my: 2 }} />
-
-              <Typography variant="body2" sx={{ color: '#7f8c8d', lineHeight: 1.8 }}>
-                Only approved comments should become visible on the product pages.
-                Rejected comments must remain hidden.
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
-
-      <Dialog open={dialogOpen} onClose={closeActionDialog}>
-        <DialogTitle sx={{ color: '#2c3e50', fontWeight: 'bold' }}>
+      <Dialog open={dialogOpen} onClose={closeActionDialog} maxWidth="xs" fullWidth>
+        <DialogTitle sx={{ bgcolor: '#2c3e50', color: '#fff' }}>
           {dialogAction === 'approve' ? 'Approve Comment' : 'Reject Comment'}
         </DialogTitle>
 
-        <DialogContent>
-          <Typography sx={{ color: '#2c3e50' }}>
+        <DialogContent sx={{ pt: 2 }}>
+          <Typography>
             Are you sure you want to{' '}
             <strong>{dialogAction === 'approve' ? 'approve' : 'reject'}</strong>
-            {selectedComment ? ` the comment for "${selectedComment.product_name}"` : ' this comment'}?
+            {selectedComment
+              ? ` the comment for "${selectedComment.product_name}"`
+              : ' this comment'}
+            ?
           </Typography>
         </DialogContent>
 
-        <DialogActions>
-          <Button onClick={closeActionDialog} sx={{ color: '#7f8c8d' }}>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={closeActionDialog}>
             Cancel
           </Button>
 
@@ -331,12 +277,13 @@ const CommentApprovalPage = () => {
             onClick={handleConfirmAction}
             variant="contained"
             color={dialogAction === 'approve' ? 'success' : 'error'}
+            disabled={actionLoadingId !== null}
           >
-            Confirm
+            {actionLoadingId !== null ? 'Processing…' : 'Confirm'}
           </Button>
         </DialogActions>
       </Dialog>
-    </Container>
+    </>
   );
 };
 

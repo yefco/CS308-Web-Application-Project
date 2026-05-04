@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import CommentApprovalPage from './CommentApprovalPage';
+import CommentIcon from '@mui/icons-material/Comment';
 import { useNavigate } from 'react-router-dom';
 import {
   Container,
@@ -623,6 +625,7 @@ const ProductManagerPage = () => {
         >
           <Tab icon={<Inventory />} iconPosition="start" label="Products" />
           <Tab icon={<Category />} iconPosition="start" label="Categories" />
+          <Tab icon={<CommentIcon />} iconPosition="start" label="Comment Approval" />
         </Tabs>
       </Paper>
 
@@ -637,6 +640,7 @@ const ProductManagerPage = () => {
           onSnack={showSnack}
         />
       )}
+      {tab === 2 && <CommentApprovalPage />}
 
       {/* Snackbar */}
       <Snackbar
