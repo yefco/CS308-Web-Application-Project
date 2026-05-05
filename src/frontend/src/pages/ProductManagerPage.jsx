@@ -1,6 +1,4 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import CommentApprovalPage from './CommentApprovalPage';
-import CommentIcon from '@mui/icons-material/Comment';
 import { useNavigate } from 'react-router-dom';
 import {
   Container,
@@ -38,7 +36,9 @@ import {
   Inventory,
   Category,
   Refresh,
+  RateReview,
 } from '@mui/icons-material';
+import CommentApprovalPage from './CommentApprovalPage';
 
 const API_BASE = '/api';
 
@@ -625,7 +625,7 @@ const ProductManagerPage = () => {
         >
           <Tab icon={<Inventory />} iconPosition="start" label="Products" />
           <Tab icon={<Category />} iconPosition="start" label="Categories" />
-          <Tab icon={<CommentIcon />} iconPosition="start" label="Comment Approval" />
+          <Tab icon={<RateReview />} iconPosition="start" label="Comment Approval" />
         </Tabs>
       </Paper>
 

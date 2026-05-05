@@ -56,10 +56,11 @@ const PaymentMethodsPage = () => {
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
 
+  const [deliveryAddress, setDeliveryAddress] = useState('');
+
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState(null);
-  const [deliveryAddress, setDeliveryAddress] = useState('');
-  const [orderLoading, setOrderLoading] = useState(false);
+  const [confirmLoading, setConfirmLoading] = useState(false);
 
   const isEditing = useMemo(() => editingPaymentId !== null, [editingPaymentId]);
 
@@ -248,13 +249,18 @@ const PaymentMethodsPage = () => {
       return;
     }
 
+    if (!deliveryAddress.trim()) {
+      setErrorMessage('Please enter a delivery address.');
+      return;
+    }
+
     if (items.length === 0) {
       setErrorMessage('Your cart is empty. Please add items before checking out.');
       return;
     }
 
     try {
-      setOrderLoading(true);
+      setConfirmLoading(true);
       const authHeaders = {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${localStorage.getItem('authToken')}`,
@@ -275,11 +281,10 @@ const PaymentMethodsPage = () => {
         }
       }
 
-      // Place the order
       const response = await fetch('/api/orders', {
         method: 'POST',
         headers: authHeaders,
-        body: JSON.stringify({ delivery_address: deliveryAddress.trim() || null }),
+        body: JSON.stringify({ delivery_address: deliveryAddress.trim() }),
       });
 
       if (!response.ok) {
@@ -292,7 +297,7 @@ const PaymentMethodsPage = () => {
     } catch (error) {
       setErrorMessage(error.message || 'Failed to place order. Please try again.');
     } finally {
-      setOrderLoading(false);
+      setConfirmLoading(false);
     }
   };
 
@@ -615,8 +620,8 @@ const PaymentMethodsPage = () => {
 
               <TextField
                 fullWidth
-                label="Delivery Address (optional)"
-                placeholder="Leave blank to use your account address"
+                label="Delivery Address"
+                placeholder="Enter your full delivery address"
                 value={deliveryAddress}
                 onChange={(e) => setDeliveryAddress(e.target.value)}
                 multiline
@@ -629,7 +634,7 @@ const PaymentMethodsPage = () => {
                 variant="contained"
                 size="large"
                 onClick={handleConfirmOrder}
-                disabled={orderLoading || items.length === 0}
+                disabled={confirmLoading || items.length === 0}
                 sx={{
                   bgcolor: '#27ae60',
                   '&:hover': { bgcolor: '#229954' },
@@ -638,14 +643,7 @@ const PaymentMethodsPage = () => {
                   fontWeight: 'bold',
                 }}
               >
-                {orderLoading ? (
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <CircularProgress size={20} sx={{ color: 'white' }} />
-                    Placing Order...
-                  </Box>
-                ) : (
-                  'Confirm Order'
-                )}
+                {confirmLoading ? <CircularProgress size={24} sx={{ color: 'white' }} /> : 'Confirm Order'}
               </Button>
             </CardContent>
           </Card>

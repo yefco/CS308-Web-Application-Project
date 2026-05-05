@@ -1,6 +1,7 @@
 use sqlx::{PgPool, Postgres, Transaction};
 
 use crate::models::order::{Order, OrderItem, OrderStatus};
+use crate::utils::errors::AppError;
 
 pub async fn create_order_in_tx(
     tx: &mut Transaction<'_, Postgres>,
@@ -140,4 +141,31 @@ pub async fn list_all_orders(pool: &PgPool) -> Result<Vec<Order>, sqlx::Error> {
     )
     .fetch_all(pool)
     .await
+}
+
+pub async fn has_purchased_product(
+    pool:       &PgPool,
+    user_id:    i32,
+    product_id: i32,
+) -> Result<bool, AppError> {
+    #[derive(sqlx::FromRow)]
+    struct Exists { exists: Option<bool> }
+
+    let row = sqlx::query_as::<_, Exists>(
+        r#"
+        SELECT EXISTS(
+            SELECT 1
+            FROM orders o
+            JOIN order_items oi ON oi.order_id = o.order_id
+            WHERE o.user_id = $1 AND oi.product_id = $2
+        ) AS exists
+        "#,
+    )
+    .bind(user_id)
+    .bind(product_id)
+    .fetch_one(pool)
+    .await
+    .map_err(AppError::from)?;
+
+    Ok(row.exists.unwrap_or(false))
 }
