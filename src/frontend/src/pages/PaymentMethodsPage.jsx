@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Container,
   Grid,
@@ -35,7 +36,8 @@ import {
 } from '../services/paymentMethodService';
 
 const PaymentMethodsPage = () => {
-  const { items, cartTotal } = useCart();
+  const navigate = useNavigate();
+  const { items, cartTotal, clear } = useCart();
 
   const [paymentMethods, setPaymentMethods] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -56,6 +58,8 @@ const PaymentMethodsPage = () => {
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState(null);
+  const [deliveryAddress, setDeliveryAddress] = useState('');
+  const [orderLoading, setOrderLoading] = useState(false);
 
   const isEditing = useMemo(() => editingPaymentId !== null, [editingPaymentId]);
 
@@ -233,6 +237,62 @@ const PaymentMethodsPage = () => {
         return 'Card on Delivery';
       default:
         return 'Unknown';
+    }
+  };
+
+  const handleConfirmOrder = async () => {
+    setErrorMessage('');
+
+    if (paymentMethod === 'by-card' && !selectedSavedCardId) {
+      setErrorMessage('Please add or select a payment card before confirming.');
+      return;
+    }
+
+    if (items.length === 0) {
+      setErrorMessage('Your cart is empty. Please add items before checking out.');
+      return;
+    }
+
+    try {
+      setOrderLoading(true);
+      const authHeaders = {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${localStorage.getItem('authToken')}`,
+      };
+
+      // Sync localStorage cart to backend (backend places orders from its own DB cart)
+      await fetch('/api/cart', { method: 'DELETE', headers: authHeaders });
+
+      for (const item of items) {
+        const syncRes = await fetch('/api/cart/items', {
+          method: 'POST',
+          headers: authHeaders,
+          body: JSON.stringify({ product_id: item.id, quantity: item.quantity }),
+        });
+        if (!syncRes.ok) {
+          const data = await syncRes.json().catch(() => null);
+          throw new Error(data?.message || data?.error || `Failed to sync cart item: ${item.name}`);
+        }
+      }
+
+      // Place the order
+      const response = await fetch('/api/orders', {
+        method: 'POST',
+        headers: authHeaders,
+        body: JSON.stringify({ delivery_address: deliveryAddress.trim() || null }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => null);
+        throw new Error(data?.message || data?.error || 'Failed to place order.');
+      }
+
+      clear();
+      navigate('/order-tracking');
+    } catch (error) {
+      setErrorMessage(error.message || 'Failed to place order. Please try again.');
+    } finally {
+      setOrderLoading(false);
     }
   };
 
@@ -553,10 +613,23 @@ const PaymentMethodsPage = () => {
                 </Typography>
               </Box>
 
+              <TextField
+                fullWidth
+                label="Delivery Address (optional)"
+                placeholder="Leave blank to use your account address"
+                value={deliveryAddress}
+                onChange={(e) => setDeliveryAddress(e.target.value)}
+                multiline
+                rows={2}
+                sx={{ mb: 2 }}
+              />
+
               <Button
                 fullWidth
                 variant="contained"
                 size="large"
+                onClick={handleConfirmOrder}
+                disabled={orderLoading || items.length === 0}
                 sx={{
                   bgcolor: '#27ae60',
                   '&:hover': { bgcolor: '#229954' },
@@ -565,7 +638,14 @@ const PaymentMethodsPage = () => {
                   fontWeight: 'bold',
                 }}
               >
-                Confirm Order
+                {orderLoading ? (
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <CircularProgress size={20} sx={{ color: 'white' }} />
+                    Placing Order...
+                  </Box>
+                ) : (
+                  'Confirm Order'
+                )}
               </Button>
             </CardContent>
           </Card>

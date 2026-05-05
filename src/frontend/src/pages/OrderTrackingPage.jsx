@@ -47,7 +47,8 @@ const OrderTrackingPage = ({ isLoggedIn }) => {
 
         // Fetch user's orders
         const ordersData = await getUserOrders();
-        setOrders(Array.isArray(ordersData) ? ordersData : []);
+        const orderList = ordersData.orders || (Array.isArray(ordersData) ? ordersData : []);
+        setOrders(orderList);
 
         // Fetch delivery information for all orders
         try {
@@ -154,7 +155,8 @@ const OrderTrackingPage = ({ isLoggedIn }) => {
       },
     };
 
-    return statusMap[status?.toLowerCase()] || statusMap.processing;
+    const normalized = status?.toLowerCase().replace('_', '-');
+    return statusMap[normalized] || statusMap.processing;
   };
 
   // Format date for display
@@ -180,7 +182,7 @@ const OrderTrackingPage = ({ isLoggedIn }) => {
 
   // Render tracking timeline
   const renderTrackingTimeline = (order) => {
-    const delivery = deliveryData[order.id];
+    const delivery = deliveryData[order.order_id];
     const status = delivery?.status || order.status || 'processing';
     const statusInfo = getStatusInfo(status);
 
@@ -282,20 +284,20 @@ const OrderTrackingPage = ({ isLoggedIn }) => {
         {/* Orders List */}
         <Box sx={{ pb: 4 }}>
           {orders.map((order) => {
-            const delivery = deliveryData[order.id];
+            const delivery = deliveryData[order.order_id];
             const status = delivery?.status || order.status || 'processing';
             const statusInfo = getStatusInfo(status);
 
             return (
-              <Card key={order.id} className="order-card">
+              <Card key={order.order_id} className="order-card">
                 {/* Order Header */}
                 <Box className="order-header">
                   <Box className="order-info">
                     <Typography className="order-id">
-                      Order #{order.id}
+                      Order #{order.order_id}
                     </Typography>
                     <Typography className="order-date">
-                      Placed on {formatDate(order.created_at || order.order_date)}
+                      Placed on {formatDate(order.created_at)}
                     </Typography>
                   </Box>
                   <span className={`order-status-badge ${statusInfo.className}`}>
@@ -347,7 +349,7 @@ const OrderTrackingPage = ({ isLoggedIn }) => {
                   <Box className="order-total">
                     <span className="order-total-label">Order Total:</span>
                     <span className="order-total-amount">
-                      ${(order.total_price || order.total || 0).toFixed(2)}
+                      ${(order.total_amount || 0).toFixed(2)}
                     </span>
                   </Box>
                 </Box>

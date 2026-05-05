@@ -64,20 +64,23 @@ const RatingsModal = ({ open, productId, productName, onClose, onSuccess, isLogg
 
     try {
       await submitProductRating(productId, rating, comment);
-      
-      // Reset form
+
       setRating(0);
       setComment('');
       setExistingRating(null);
-      
-      // Call success callback to refresh parent data
+
       if (onSuccess) {
         onSuccess();
       }
-      
+
       onClose();
     } catch (err) {
-      setError(err.message || 'Failed to submit rating. Please try again.');
+      const msg = err.message || '';
+      if (msg.includes('404') || msg.toLowerCase().includes('not found') || msg === 'Something went wrong.') {
+        setError('Rating & review feature is not yet available. Please check back later.');
+      } else {
+        setError(msg || 'Failed to submit rating. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
