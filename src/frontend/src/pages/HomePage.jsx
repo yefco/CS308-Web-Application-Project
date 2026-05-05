@@ -22,6 +22,7 @@ import {
 import { ShoppingCart, FavoriteBorder, Favorite, RateReview } from '@mui/icons-material';
 import { useCart } from '../context/CartContext';
 import RatingsModal from '../components/RatingsModal';
+import ProductDetailModal from '../components/ProductDetailModal';
 import '../styles/HomePage.css';
 
 // Fallback images by product name
@@ -49,8 +50,26 @@ const HomePage = ({ isLoggedIn }) => {
   const [products, setProducts] = useState([]);
   const [apiCategories, setApiCategories] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [imageErrors, setImageErrors] = useState({});
   const [ratingsModalOpen, setRatingsModalOpen] = useState(false);
   const [selectedProductForRating, setSelectedProductForRating] = useState(null);
+  const [detailModalOpen, setDetailModalOpen] = useState(false);
+  const [selectedProductForDetail, setSelectedProductForDetail] = useState(null);
+
+  const fetchReviewsForProducts = async (productList) => {
+    const reviewResults = await Promise.all(
+      productList.map(p =>
+        fetch(`/api/products/${p.id}/ratings`)
+          .then(r => r.json())
+          .catch(() => ({ average_rating: 0, total_reviews: 0 }))
+      )
+    );
+    return productList.map((p, i) => ({
+      ...p,
+      rating: reviewResults[i].average_rating || 0,
+      reviews: reviewResults[i].total_reviews || 0,
+    }));
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -67,19 +86,23 @@ const HomePage = ({ isLoggedIn }) => {
         const rawCategories = Array.isArray(categoriesData) ? categoriesData : (categoriesData.categories ?? []);
 
         setApiCategories(rawCategories);
-        setProducts(rawProducts.map(p => ({
+
+        const mapped = rawProducts.map(p => ({
           id: p.product_id,
           name: p.product_name,
           category: rawCategories.find(c => c.category_id === p.category_id)?.category_name ?? '',
           price: parseFloat(p.price),
           originalPrice: parseFloat(p.price),
-          image: PRODUCT_IMAGES[p.product_name] || 'https://via.placeholder.com/300x200?text=No+Image',
-          rating: 4.5,
+          image: PRODUCT_IMAGES[p.product_name] || null,
+          rating: 0,
           reviews: 0,
           stock: p.stock_quantity,
           discount: 0,
           description: p.description ?? '',
-        })));
+        }));
+
+        const withReviews = await fetchReviewsForProducts(mapped);
+        setProducts(withReviews);
       } catch {
         setProducts([]);
       } finally {
@@ -137,10 +160,35 @@ const HomePage = ({ isLoggedIn }) => {
     setSelectedProductForRating(null);
   };
 
-  const handleRatingSuccess = () => {
+  const handleOpenDetail = (product) => {
+    setSelectedProductForDetail(product);
+    setDetailModalOpen(true);
+  };
+
+  const handleCloseDetail = () => {
+    setDetailModalOpen(false);
+    setSelectedProductForDetail(null);
+  };
+
+  const handleRatingSuccess = async () => {
     setSnackbarMessage('Thank you for your rating!');
     setSnackbarSeverity('success');
     setSnackbarOpen(true);
+    if (selectedProductForRating) {
+      try {
+        const res = await fetch(`/api/products/${selectedProductForRating.id}/ratings`);
+        const data = await res.json();
+        setProducts(prev =>
+          prev.map(p =>
+            p.id === selectedProductForRating.id
+              ? { ...p, rating: data.average_rating || 0, reviews: data.total_reviews || 0 }
+              : p
+          )
+        );
+      } catch {
+        // ignore refresh error
+      }
+    }
   };
 
   return (
@@ -239,15 +287,22 @@ const HomePage = ({ isLoggedIn }) => {
           <Grid container spacing={3}>
             {filteredAndSortedProducts.map((product) => (
               <Grid item xs={12} sm={6} md={4} lg={3} key={product.id}>
-                <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column', transition: 'transform 0.3s, box-shadow 0.3s', '&:hover': { transform: 'translateY(-8px)', boxShadow: 6 } }}>
-                  <Box sx={{ position: 'relative' }}>
+                <Card sx={{ height: '500px', display: 'flex', flexDirection: 'column', transition: 'transform 0.3s, box-shadow 0.3s', '&:hover': { transform: 'translateY(-8px)', boxShadow: 6 }, cursor: 'pointer' }}>
+                  <Box sx={{ position: 'relative' }} onClick={() => handleOpenDetail(product)}>
                     <div className="product-image-container">
-                      <CardMedia
-                        component="img"
-                        image={product.image}
-                        alt={product.name}
-                        sx={{ maxHeight: '160px', maxWidth: '100%', objectFit: 'contain' }}
-                      />
+                      {product.image && !imageErrors[product.id] ? (
+                        <CardMedia
+                          component="img"
+                          image={product.image}
+                          alt={product.name}
+                          sx={{ maxHeight: '160px', maxWidth: '100%', objectFit: 'contain' }}
+                          onError={() => setImageErrors(prev => ({ ...prev, [product.id]: true }))}
+                        />
+                      ) : (
+                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', color: '#bbb' }}>
+                          <Typography variant="caption" color="textSecondary">No Image</Typography>
+                        </Box>
+                      )}
                     </div>
                     {product.discount > 0 && (
                       <Chip
@@ -268,11 +323,11 @@ const HomePage = ({ isLoggedIn }) => {
                       )}
                     </Button>
                   </Box>
-                  <CardContent sx={{ flexGrow: 1 }}>
-                    <Typography gutterBottom variant="h6" component="h3" sx={{ fontWeight: 'bold' }}>
+                  <CardContent sx={{ flexGrow: 1 }} onClick={() => handleOpenDetail(product)}>
+                    <Typography gutterBottom variant="h6" component="h3" sx={{ fontWeight: 'bold', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', minHeight: '3.5rem' }}>
                       {product.name}
                     </Typography>
-                    <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
+                    <Typography variant="body2" color="textSecondary" sx={{ mb: 2, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
                       {product.description}
                     </Typography>
                     <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
@@ -325,6 +380,15 @@ const HomePage = ({ isLoggedIn }) => {
           </Box>
         )}
       </Container>
+
+      {/* Product Detail Modal */}
+      <ProductDetailModal
+        open={detailModalOpen}
+        product={selectedProductForDetail}
+        onClose={handleCloseDetail}
+        onOpenRatings={handleOpenRatingsModal}
+        isLoggedIn={isLoggedIn}
+      />
 
       {/* Ratings Modal */}
       {selectedProductForRating && (

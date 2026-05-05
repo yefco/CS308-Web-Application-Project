@@ -13,6 +13,16 @@ import OrderTrackingPage from './pages/OrderTrackingPage';
 import { CartProvider, useCart } from './context/CartContext';
 import './App.css';
 
+function isTokenValid(token) {
+  if (!token) return false;
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    return payload.exp * 1000 > Date.now();
+  } catch {
+    return false;
+  }
+}
+
 function AppContent() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const { mergeWithUserCart } = useCart();
@@ -21,11 +31,17 @@ function AppContent() {
   // Check auth state on mount and whenever location changes
   useEffect(() => {
     const savedLoginState = localStorage.getItem('isLoggedIn');
-    if (savedLoginState === 'true') {
+    const token = localStorage.getItem('authToken');
+
+    if (savedLoginState === 'true' && isTokenValid(token)) {
       setIsLoggedIn(true);
-      // Merge guest cart with user cart on login
       mergeWithUserCart();
     } else {
+      // Token missing, expired, or invalid — clear stale auth state
+      localStorage.removeItem('isLoggedIn');
+      localStorage.removeItem('authToken');
+      localStorage.removeItem('userData');
+      localStorage.removeItem('userEmail');
       setIsLoggedIn(false);
     }
   }, [location, mergeWithUserCart]);

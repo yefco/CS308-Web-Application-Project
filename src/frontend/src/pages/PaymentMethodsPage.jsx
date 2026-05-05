@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Container,
   Grid,
@@ -35,7 +36,8 @@ import {
 } from '../services/paymentMethodService';
 
 const PaymentMethodsPage = () => {
-  const { items, cartTotal } = useCart();
+  const navigate = useNavigate();
+  const { items, cartTotal, clear } = useCart();
 
   const [paymentMethods, setPaymentMethods] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -54,8 +56,11 @@ const PaymentMethodsPage = () => {
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
 
+  const [deliveryAddress, setDeliveryAddress] = useState('');
+
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState(null);
+  const [confirmLoading, setConfirmLoading] = useState(false);
 
   const isEditing = useMemo(() => editingPaymentId !== null, [editingPaymentId]);
 
@@ -211,6 +216,41 @@ const PaymentMethodsPage = () => {
       setErrorMessage(error.message || 'Delete failed.');
     } finally {
       setDeleteLoadingId(null);
+    }
+  };
+
+  const handleConfirmOrder = async () => {
+    if (paymentMethod === 'by-card' && !selectedSavedCardId) {
+      setErrorMessage('Please add or select a saved card before confirming.');
+      return;
+    }
+    if (!deliveryAddress.trim()) {
+      setErrorMessage('Please enter a delivery address.');
+      return;
+    }
+    const token = localStorage.getItem('authToken');
+    if (!token) {
+      setErrorMessage('You must be logged in to place an order.');
+      return;
+    }
+    try {
+      setConfirmLoading(true);
+      setErrorMessage('');
+      const res = await fetch('/api/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ delivery_address: deliveryAddress.trim() }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || err.message || 'Failed to place order.');
+      }
+      await clear();
+      navigate('/order-tracking');
+    } catch (err) {
+      setErrorMessage(err.message);
+    } finally {
+      setConfirmLoading(false);
     }
   };
 
@@ -553,10 +593,23 @@ const PaymentMethodsPage = () => {
                 </Typography>
               </Box>
 
+              <TextField
+                fullWidth
+                label="Delivery Address"
+                placeholder="Enter your full delivery address"
+                value={deliveryAddress}
+                onChange={(e) => setDeliveryAddress(e.target.value)}
+                multiline
+                rows={2}
+                sx={{ mb: 2 }}
+              />
+
               <Button
                 fullWidth
                 variant="contained"
                 size="large"
+                onClick={handleConfirmOrder}
+                disabled={confirmLoading || items.length === 0}
                 sx={{
                   bgcolor: '#27ae60',
                   '&:hover': { bgcolor: '#229954' },
@@ -565,7 +618,7 @@ const PaymentMethodsPage = () => {
                   fontWeight: 'bold',
                 }}
               >
-                Confirm Order
+                {confirmLoading ? <CircularProgress size={24} sx={{ color: 'white' }} /> : 'Confirm Order'}
               </Button>
             </CardContent>
           </Card>

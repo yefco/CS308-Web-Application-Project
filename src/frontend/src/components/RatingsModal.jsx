@@ -19,18 +19,40 @@ const RatingsModal = ({ open, productId, productName, onClose, onSuccess, isLogg
   const [comment, setComment] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [submitted, setSubmitted] = useState(false);
   const [existingRating, setExistingRating] = useState(null);
+  const [canReview, setCanReview] = useState(null); // null = checking, true/false = result
 
-  // Load user's existing rating when modal opens
+  // Load user's existing rating + purchase eligibility when modal opens
   useEffect(() => {
     if (open && isLoggedIn && productId) {
+      setCanReview(null);
       loadUserRating();
+      checkPurchase();
     } else if (open && !isLoggedIn) {
       setRating(0);
       setComment('');
       setExistingRating(null);
+      setCanReview(null);
     }
   }, [open, productId, isLoggedIn]);
+
+  const checkPurchase = async () => {
+    try {
+      const token = localStorage.getItem('authToken');
+      const res = await fetch(`/api/products/${productId}/purchase-check`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setCanReview(data.can_review);
+      } else {
+        setCanReview(false);
+      }
+    } catch {
+      setCanReview(false);
+    }
+  };
 
   const loadUserRating = async () => {
     try {
@@ -64,18 +86,9 @@ const RatingsModal = ({ open, productId, productName, onClose, onSuccess, isLogg
 
     try {
       await submitProductRating(productId, rating, comment);
-      
-      // Reset form
-      setRating(0);
-      setComment('');
-      setExistingRating(null);
-      
-      // Call success callback to refresh parent data
-      if (onSuccess) {
-        onSuccess();
-      }
-      
-      onClose();
+
+      setSubmitted(true);
+      if (onSuccess) onSuccess();
     } catch (err) {
       setError(err.message || 'Failed to submit rating. Please try again.');
     } finally {
@@ -88,6 +101,8 @@ const RatingsModal = ({ open, productId, productName, onClose, onSuccess, isLogg
     setRating(0);
     setComment('');
     setExistingRating(null);
+    setSubmitted(false);
+    setCanReview(null);
     onClose();
   };
 
@@ -102,71 +117,93 @@ const RatingsModal = ({ open, productId, productName, onClose, onSuccess, isLogg
         )}
       </DialogTitle>
       <DialogContent sx={{ pt: 2 }}>
-        {!isLoggedIn ? (
-          <Alert severity="warning" sx={{ mb: 2 }}>
-            Please log in to submit a rating or comment.
+        {submitted ? (
+          <Alert severity="success">
+            Thanks for your review! Your rating is live — your comment will appear after approval.
           </Alert>
-        ) : null}
+        ) : (
+          <>
+            {!isLoggedIn && (
+              <Alert severity="warning" sx={{ mb: 2 }}>
+                Please log in to submit a rating or comment.
+              </Alert>
+            )}
 
-        {error && (
-          <Alert severity="error" sx={{ mb: 2 }}>
-            {error}
-          </Alert>
-        )}
+            {isLoggedIn && canReview === null && (
+              <Alert severity="info" sx={{ mb: 2 }}>
+                Checking purchase eligibility...
+              </Alert>
+            )}
 
-        <Box sx={{ mb: 3 }}>
-          <Typography component="legend" sx={{ mb: 1, fontWeight: 'bold' }}>
-            Your Rating
-          </Typography>
-          <Rating
-            name="rating"
-            value={rating}
-            onChange={(event, newValue) => {
-              setRating(newValue);
-              setError('');
-            }}
-            size="large"
-            disabled={!isLoggedIn || loading}
-          />
-          <Typography variant="caption" color="textSecondary" sx={{ display: 'block', mt: 1 }}>
-            Rate from 1 to 5 stars
-          </Typography>
-        </Box>
+            {isLoggedIn && canReview === false && (
+              <Alert severity="error" sx={{ mb: 2 }}>
+                You must purchase this product before leaving a review.
+              </Alert>
+            )}
 
-        <Box sx={{ mb: 2 }}>
-          <TextField
-            fullWidth
-            multiline
-            rows={4}
-            label="Comment (Optional)"
-            placeholder="Share your thoughts about this product..."
-            value={comment}
-            onChange={(e) => setComment(e.target.value)}
-            disabled={!isLoggedIn || loading}
-            variant="outlined"
-            helperText={`${comment.length}/500 characters`}
-            inputProps={{ maxLength: 500 }}
-          />
-        </Box>
+            {error && (
+              <Alert severity="error" sx={{ mb: 2 }}>
+                {error}
+              </Alert>
+            )}
 
-        {existingRating && (
-          <Alert severity="info">
-            Submitting a new rating will update your previous rating.
-          </Alert>
+            <Box sx={{ mb: 3 }}>
+              <Typography component="legend" sx={{ mb: 1, fontWeight: 'bold' }}>
+                Your Rating
+              </Typography>
+              <Rating
+                name="rating"
+                value={rating}
+                onChange={(event, newValue) => {
+                  setRating(newValue);
+                  setError('');
+                }}
+                size="large"
+                disabled={!isLoggedIn || loading || canReview !== true}
+              />
+              <Typography variant="caption" color="textSecondary" sx={{ display: 'block', mt: 1 }}>
+                Rate from 1 to 5 stars
+              </Typography>
+            </Box>
+
+            <Box sx={{ mb: 2 }}>
+              <TextField
+                fullWidth
+                multiline
+                rows={4}
+                label="Comment (Optional)"
+                placeholder="Share your thoughts about this product..."
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+                disabled={!isLoggedIn || loading || canReview !== true}
+                variant="outlined"
+                helperText={`${comment.length}/500 characters`}
+                inputProps={{ maxLength: 500 }}
+              />
+            </Box>
+
+            {existingRating && (
+              <Alert severity="info">
+                Submitting a new rating will update your previous rating.
+              </Alert>
+            )}
+          </>
         )}
       </DialogContent>
       <DialogActions>
-        <Button onClick={handleClose} disabled={loading}>
-          Cancel
+        <Button onClick={handleClose}>
+          {submitted ? 'Close' : 'Cancel'}
         </Button>
-        <Button
-          onClick={handleSubmit}
-          variant="contained"
-          disabled={!isLoggedIn || loading || rating === 0}
-          sx={{ bgcolor: '#3498db', '&:hover': { bgcolor: '#2980b9' } }}
-        >
-          {loading ? <CircularProgress size={24} /> : 'Submit Rating'}
-        </Button>
+        {!submitted && (
+          <Button
+            onClick={handleSubmit}
+            variant="contained"
+            disabled={!isLoggedIn || loading || rating === 0 || canReview !== true}
+            sx={{ bgcolor: '#3498db', '&:hover': { bgcolor: '#2980b9' } }}
+          >
+            {loading ? <CircularProgress size={24} /> : 'Submit Rating'}
+          </Button>
+        )}
       </DialogActions>
     </Dialog>
   );

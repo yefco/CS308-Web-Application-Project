@@ -36,7 +36,9 @@ import {
   Inventory,
   Category,
   Refresh,
+  RateReview,
 } from '@mui/icons-material';
+import CommentApprovalPage from './CommentApprovalPage';
 
 const API_BASE = '/api';
 
@@ -623,6 +625,7 @@ const ProductManagerPage = () => {
         >
           <Tab icon={<Inventory />} iconPosition="start" label="Products" />
           <Tab icon={<Category />} iconPosition="start" label="Categories" />
+          <Tab icon={<RateReview />} iconPosition="start" label="Comment Approval" />
         </Tabs>
       </Paper>
 
@@ -637,6 +640,7 @@ const ProductManagerPage = () => {
           onSnack={showSnack}
         />
       )}
+      {tab === 2 && <CommentApprovalPage />}
 
       {/* Snackbar */}
       <Snackbar

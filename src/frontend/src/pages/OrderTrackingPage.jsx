@@ -9,354 +9,255 @@ import {
   CardContent,
   Alert,
   Button,
-  Grid,
+  Chip,
+  Divider,
+  Stepper,
+  Step,
+  StepLabel,
 } from '@mui/material';
 import {
   ShoppingBag as OrderIcon,
-  LocalShipping as ShippingIcon,
-  CheckCircle as DeliveredIcon,
-  Info as InfoIcon,
+  LocationOn as LocationIcon,
+  CalendarToday as DateIcon,
+  ReceiptLong as ReceiptIcon,
 } from '@mui/icons-material';
-import { getUserOrders, getUserDeliveries } from '../services/orderTrackingService';
-import '../styles/OrderTracking.css';
+import { getUserOrders } from '../services/orderTrackingService';
 
-/**
- * OrderTrackingPage Component
- * Displays user's orders and their delivery status with real-time tracking
- */
+const STATUS_STEPS = ['Order Placed', 'Processing', 'In Transit', 'Delivered'];
+
+const getActiveStep = (status) => {
+  switch (status?.toLowerCase().replace('-', '_')) {
+    case 'processing':   return 1;
+    case 'in_transit':   return 2;
+    case 'delivered':    return 3;
+    default:             return 0;
+  }
+};
+
+const STATUS_CHIP = {
+  processing:  { label: 'Processing',  color: 'warning' },
+  in_transit:  { label: 'In Transit',  color: 'info'    },
+  delivered:   { label: 'Delivered',   color: 'success' },
+};
+
+const getChip = (status) => {
+  const key = status?.toLowerCase().replace('-', '_');
+  return STATUS_CHIP[key] || { label: status || 'Processing', color: 'default' };
+};
+
+const fmt = (dateStr) => {
+  if (!dateStr) return '—';
+  return new Date(dateStr).toLocaleDateString('en-US', {
+    month: 'short', day: 'numeric', year: 'numeric',
+  });
+};
+
 const OrderTrackingPage = ({ isLoggedIn }) => {
   const navigate = useNavigate();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [deliveryData, setDeliveryData] = useState({});
 
-  // Redirect to login if not authenticated
   useEffect(() => {
-    if (!isLoggedIn) {
-      navigate('/login', { state: { returnTo: '/order-tracking' } });
-    }
+    if (!isLoggedIn) navigate('/login', { state: { returnTo: '/order-tracking' } });
   }, [isLoggedIn, navigate]);
 
-  // Fetch orders and delivery data on component mount
   useEffect(() => {
-    const fetchOrdersData = async () => {
+    if (!isLoggedIn) return;
+    (async () => {
       try {
         setLoading(true);
-        setError(null);
-
-        // Fetch user's orders
-        const ordersData = await getUserOrders();
-        setOrders(Array.isArray(ordersData) ? ordersData : []);
-
-        // Fetch delivery information for all orders
-        try {
-          const deliveriesData = await getUserDeliveries();
-          if (deliveriesData && Array.isArray(deliveriesData)) {
-            const deliveryMap = {};
-            deliveriesData.forEach((delivery) => {
-              deliveryMap[delivery.order_id] = delivery;
-            });
-            setDeliveryData(deliveryMap);
-          }
-        } catch (err) {
-          console.log('Deliveries not yet available:', err.message);
-          // Continue without delivery data - orders may not have been processed yet
-        }
+        const data = await getUserOrders();
+        const list = Array.isArray(data) ? data : (data?.orders ?? []);
+        setOrders(list);
       } catch (err) {
-        setError(err.message || 'Failed to load orders. Please try again later.');
-        console.error('Error fetching orders:', err);
+        setError(err.message || 'Failed to load orders.');
       } finally {
         setLoading(false);
       }
-    };
-
-    if (isLoggedIn) {
-      fetchOrdersData();
-    }
+    })();
   }, [isLoggedIn]);
 
-  // Get status-specific information
-  const getStatusInfo = (status) => {
-    const statusMap = {
-      processing: {
-        label: 'Processing',
-        className: 'status-processing',
-        icon: OrderIcon,
-        steps: [
-          { title: 'Order Placed', completed: true, timestamp: new Date() },
-          {
-            title: 'Payment Confirmed',
-            completed: true,
-            timestamp: new Date(Date.now() - 3600000),
-          },
-          {
-            title: 'Preparing for Shipment',
-            completed: false,
-            inProgress: true,
-          },
-          { title: 'In Transit', completed: false },
-          { title: 'Delivered', completed: false },
-        ],
-      },
-      'in-transit': {
-        label: 'In Transit',
-        className: 'status-in-transit',
-        icon: ShippingIcon,
-        steps: [
-          { title: 'Order Placed', completed: true, timestamp: new Date() },
-          {
-            title: 'Payment Confirmed',
-            completed: true,
-            timestamp: new Date(Date.now() - 3600000),
-          },
-          {
-            title: 'Shipped',
-            completed: true,
-            timestamp: new Date(Date.now() - 7200000),
-          },
-          {
-            title: 'In Transit',
-            completed: false,
-            inProgress: true,
-            estimatedDelivery: new Date(Date.now() + 86400000), // +1 day
-          },
-          { title: 'Delivered', completed: false },
-        ],
-      },
-      delivered: {
-        label: 'Delivered',
-        className: 'status-delivered',
-        icon: DeliveredIcon,
-        steps: [
-          { title: 'Order Placed', completed: true, timestamp: new Date() },
-          {
-            title: 'Payment Confirmed',
-            completed: true,
-            timestamp: new Date(Date.now() - 86400000),
-          },
-          {
-            title: 'Shipped',
-            completed: true,
-            timestamp: new Date(Date.now() - 43200000),
-          },
-          {
-            title: 'In Transit',
-            completed: true,
-            timestamp: new Date(Date.now() - 14400000),
-          },
-          {
-            title: 'Delivered',
-            completed: true,
-            timestamp: new Date(Date.now() - 3600000),
-          },
-        ],
-      },
-    };
-
-    return statusMap[status?.toLowerCase()] || statusMap.processing;
-  };
-
-  // Format date for display
-  const formatDate = (date) => {
-    if (!date) return 'Pending';
-    const d = new Date(date);
-    return d.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    });
-  };
-
-  // Format time for display
-  const formatTime = (date) => {
-    if (!date) return '';
-    const d = new Date(date);
-    return d.toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
-
-  // Render tracking timeline
-  const renderTrackingTimeline = (order) => {
-    const delivery = deliveryData[order.id];
-    const status = delivery?.status || order.status || 'processing';
-    const statusInfo = getStatusInfo(status);
-
-    return (
-      <div className="tracking-timeline">
-        {statusInfo.steps.map((step, index) => (
-          <div
-            key={index}
-            className={`tracking-step ${
-              step.completed
-                ? 'completed'
-                : step.inProgress
-                  ? 'in-progress'
-                  : 'pending'
-            }`}
-          >
-            <p className="tracking-step-title">{step.title}</p>
-            <p className="tracking-step-date">
-              {step.completed && step.timestamp
-                ? `${formatDate(step.timestamp)} at ${formatTime(step.timestamp)}`
-                : step.inProgress
-                  ? `Est. ${formatDate(step.estimatedDelivery || new Date(Date.now() + 86400000))}`
-                  : 'Pending'}
-            </p>
-          </div>
-        ))}
-      </div>
-    );
-  };
-
-  // Loading state
   if (loading) {
     return (
-      <Box className="loading">
-        <CircularProgress size={50} />
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
+        <CircularProgress size={48} />
       </Box>
     );
   }
 
-  // No orders state
   if (orders.length === 0) {
     return (
-      <Container maxWidth="lg" sx={{ py: 8 }}>
-        <Box className="no-orders">
-          <OrderIcon className="no-orders-icon" />
-          <Typography variant="h4" component="h2" className="no-orders">
-            No Orders Yet
-          </Typography>
-          <Typography variant="body1" sx={{ color: '#7f8c8d', mb: 3 }}>
-            You haven't placed any orders yet. Start shopping to track your deliveries!
-          </Typography>
-          <Button
-            variant="contained"
-            sx={{
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-              color: 'white',
-              px: 4,
-              py: 1.5,
-              borderRadius: '25px',
-              fontWeight: 600,
-            }}
-            onClick={() => navigate('/')}
-          >
-            Browse Products
-          </Button>
-        </Box>
+      <Container maxWidth="sm" sx={{ py: 10, textAlign: 'center' }}>
+        <OrderIcon sx={{ fontSize: 80, color: '#bdc3c7', mb: 2 }} />
+        <Typography variant="h4" sx={{ fontWeight: 'bold', color: '#2c3e50', mb: 1 }}>
+          No Orders Yet
+        </Typography>
+        <Typography sx={{ color: '#7f8c8d', mb: 4 }}>
+          You haven't placed any orders yet. Start shopping!
+        </Typography>
+        <Button
+          variant="contained"
+          size="large"
+          onClick={() => navigate('/')}
+          sx={{ bgcolor: '#3498db', '&:hover': { bgcolor: '#2980b9' }, borderRadius: 2, px: 4 }}
+        >
+          Browse Products
+        </Button>
       </Container>
     );
   }
 
   return (
-    <div className="order-tracking-container">
-      <Container maxWidth="lg">
-        {/* Header */}
-        <Box className="tracking-header">
-          <Typography variant="h4" component="h1">
-            Order Tracking
+    <Box sx={{ bgcolor: '#f4f6f8', minHeight: '100vh', py: 5 }}>
+      <Container maxWidth="md">
+        {/* Page title */}
+        <Box sx={{ mb: 4 }}>
+          <Typography variant="h4" sx={{ fontWeight: 'bold', color: '#2c3e50' }}>
+            My Orders
           </Typography>
-          <Typography variant="body2">
-            Track the status and delivery of your orders in real-time
+          <Typography sx={{ color: '#7f8c8d', mt: 0.5 }}>
+            {orders.length} order{orders.length !== 1 ? 's' : ''} found
           </Typography>
         </Box>
 
-        {/* Error Alert */}
-        {error && (
-          <Alert severity="error" sx={{ mb: 3 }}>
-            {error}
-          </Alert>
-        )}
+        {error && <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>}
 
-        {/* Info Alert */}
-        {orders.length > 0 && (
-          <Alert severity="info" icon={<InfoIcon />} sx={{ mb: 3 }}>
-            Your orders are being processed and prepared for shipment. Check back regularly for
-            delivery updates.
-          </Alert>
-        )}
+        {orders.map((order) => {
+          const orderId = order.order_id ?? order.id;
+          const status = order.status ?? 'processing';
+          const chip = getChip(status);
+          const activeStep = getActiveStep(status);
+          const total = parseFloat(order.total_amount ?? order.total ?? 0);
 
-        {/* Orders List */}
-        <Box sx={{ pb: 4 }}>
-          {orders.map((order) => {
-            const delivery = deliveryData[order.id];
-            const status = delivery?.status || order.status || 'processing';
-            const statusInfo = getStatusInfo(status);
-
-            return (
-              <Card key={order.id} className="order-card">
-                {/* Order Header */}
-                <Box className="order-header">
-                  <Box className="order-info">
-                    <Typography className="order-id">
-                      Order #{order.id}
-                    </Typography>
-                    <Typography className="order-date">
-                      Placed on {formatDate(order.created_at || order.order_date)}
-                    </Typography>
-                  </Box>
-                  <span className={`order-status-badge ${statusInfo.className}`}>
-                    {statusInfo.label}
-                  </span>
+          return (
+            <Card
+              key={orderId}
+              elevation={0}
+              sx={{
+                mb: 3,
+                border: '1px solid #e0e0e0',
+                borderRadius: 3,
+                overflow: 'hidden',
+                transition: 'box-shadow 0.2s',
+                '&:hover': { boxShadow: '0 4px 20px rgba(0,0,0,0.10)' },
+              }}
+            >
+              {/* Card header */}
+              <Box
+                sx={{
+                  px: 3, py: 2,
+                  bgcolor: '#fff',
+                  borderBottom: '1px solid #f0f0f0',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  flexWrap: 'wrap',
+                  gap: 1,
+                }}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                  <ReceiptIcon sx={{ color: '#3498db', fontSize: 20 }} />
+                  <Typography sx={{ fontWeight: 700, color: '#2c3e50', fontSize: 15 }}>
+                    Order #{orderId}
+                  </Typography>
+                  <Chip
+                    label={chip.label}
+                    color={chip.color}
+                    size="small"
+                    sx={{ fontWeight: 600, fontSize: 11 }}
+                  />
                 </Box>
-
-                {/* Delivery Tracking Timeline */}
-                <Box className="delivery-tracking">
-                  {renderTrackingTimeline(order)}
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, color: '#95a5a6' }}>
+                  <DateIcon sx={{ fontSize: 15 }} />
+                  <Typography variant="body2">{fmt(order.created_at)}</Typography>
                 </Box>
+              </Box>
 
-                {/* Delivery Address */}
-                {delivery?.delivery_address && (
-                  <Box sx={{ px: 2, py: 2, background: '#f8f9fa' }}>
-                    <Box className="delivery-address">
-                      <span className="delivery-address-label">
-                        📍 Delivery Address
-                      </span>
-                      <div>{delivery.delivery_address}</div>
+              <CardContent sx={{ px: 3, py: 3 }}>
+                {/* Progress stepper */}
+                <Stepper activeStep={activeStep} alternativeLabel sx={{ mb: 3 }}>
+                  {STATUS_STEPS.map((label) => (
+                    <Step key={label}>
+                      <StepLabel
+                        sx={{
+                          '& .MuiStepLabel-label': { fontSize: 12, fontWeight: 500 },
+                        }}
+                      >
+                        {label}
+                      </StepLabel>
+                    </Step>
+                  ))}
+                </Stepper>
+
+                {/* Delivery address */}
+                {order.delivery_address && (
+                  <Box
+                    sx={{
+                      display: 'flex', alignItems: 'flex-start', gap: 1,
+                      bgcolor: '#f8f9fa', borderRadius: 2, px: 2, py: 1.5, mb: 2,
+                    }}
+                  >
+                    <LocationIcon sx={{ color: '#3498db', fontSize: 18, mt: 0.2 }} />
+                    <Box>
+                      <Typography sx={{ fontSize: 11, fontWeight: 700, color: '#95a5a6', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                        Delivery Address
+                      </Typography>
+                      <Typography variant="body2" sx={{ color: '#2c3e50', mt: 0.3 }}>
+                        {order.delivery_address}
+                      </Typography>
                     </Box>
                   </Box>
                 )}
 
-                {/* Order Items */}
+                {/* Items */}
                 {order.items && order.items.length > 0 && (
-                  <Box className="order-items">
-                    <Typography component="h4">Items in Order</Typography>
-                    {order.items.map((item, index) => (
-                      <Box key={index} className="item">
-                        <Box className="item-details">
-                          <Typography className="item-name">
-                            {item.product_name || item.name}
-                          </Typography>
-                          <Typography className="item-quantity">
-                            Qty: {item.quantity}
+                  <>
+                    <Typography sx={{ fontSize: 12, fontWeight: 700, color: '#95a5a6', textTransform: 'uppercase', letterSpacing: 0.5, mb: 1.5 }}>
+                      Items
+                    </Typography>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, mb: 2 }}>
+                      {order.items.map((item, i) => (
+                        <Box
+                          key={i}
+                          sx={{
+                            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                            py: 1, px: 1.5, borderRadius: 1.5, bgcolor: '#fafafa',
+                            border: '1px solid #f0f0f0',
+                          }}
+                        >
+                          <Box>
+                            <Typography variant="body2" sx={{ fontWeight: 600, color: '#2c3e50' }}>
+                              {item.product_name ?? item.name}
+                            </Typography>
+                            <Typography variant="caption" sx={{ color: '#95a5a6' }}>
+                              Qty: {item.quantity} × ${parseFloat(item.unit_price ?? item.price ?? 0).toFixed(2)}
+                            </Typography>
+                          </Box>
+                          <Typography variant="body2" sx={{ fontWeight: 700, color: '#3498db' }}>
+                            ${parseFloat(item.subtotal ?? (item.unit_price * item.quantity) ?? 0).toFixed(2)}
                           </Typography>
                         </Box>
-                        <Typography className="item-price">
-                          ${(item.price * item.quantity).toFixed(2)}
-                        </Typography>
-                      </Box>
-                    ))}
-                  </Box>
+                      ))}
+                    </Box>
+                  </>
                 )}
 
-                {/* Order Footer */}
-                <Box className="order-footer">
-                  <Box className="order-total">
-                    <span className="order-total-label">Order Total:</span>
-                    <span className="order-total-amount">
-                      ${(order.total_price || order.total || 0).toFixed(2)}
-                    </span>
-                  </Box>
+                <Divider sx={{ my: 1.5 }} />
+
+                {/* Total */}
+                <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 1.5, pt: 0.5 }}>
+                  <Typography sx={{ color: '#7f8c8d', fontWeight: 600 }}>Order Total</Typography>
+                  <Typography sx={{ fontSize: 20, fontWeight: 800, color: '#2c3e50' }}>
+                    ${total.toFixed(2)}
+                  </Typography>
                 </Box>
-              </Card>
-            );
-          })}
-        </Box>
+              </CardContent>
+            </Card>
+          );
+        })}
       </Container>
-    </div>
+    </Box>
   );
 };
 
