@@ -227,7 +227,7 @@ const HomePage = ({ isLoggedIn }) => {
         </Container>
       </Box>
 
-      <Container sx={{ py: 6 }}>
+      <Container maxWidth="xl" sx={{ py: 6 }}>
         {/* Filters and Search */}
         <Paper elevation={0} sx={{ p: 3, mb: 4, bgcolor: '#f8f9fa' }}>
           <Grid container spacing={2} sx={{ mb: 2 }}>
@@ -286,7 +286,7 @@ const HomePage = ({ isLoggedIn }) => {
         ) : filteredAndSortedProducts.length > 0 ? (
           <Grid container spacing={3}>
             {filteredAndSortedProducts.map((product) => (
-              <Grid item xs={12} sm={6} md={4} lg={3} key={product.id}>
+              <Grid item xs={12} sm={6} md={4} lg={4} key={product.id}>
                 <Card sx={{ height: '500px', display: 'flex', flexDirection: 'column', transition: 'transform 0.3s, box-shadow 0.3s', '&:hover': { transform: 'translateY(-8px)', boxShadow: 6 }, cursor: 'pointer' }}>
                   <Box sx={{ position: 'relative' }} onClick={() => handleOpenDetail(product)}>
                     <div className="product-image-container">
