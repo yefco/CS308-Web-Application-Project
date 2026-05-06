@@ -13,6 +13,7 @@
 mod config;
 mod database;
 mod handlers;
+mod middleware;
 mod models;
 mod repository;
 mod routes;
@@ -28,8 +29,13 @@ use tower_http::trace::TraceLayer;
 
 use crate::config::app_config::AppConfig;
 use crate::database::db;
-use crate::routes::auth_routes;
+use crate::routes::{auth_routes, cart_routes, order_routes, payment_routes, product_routes, review_routes};
 use crate::services::auth_service::AuthService;
+use crate::services::cart_service::CartService;
+use crate::services::order_service::OrderService;
+use crate::services::payment_service::PaymentService;
+use crate::services::product_service::ProductService;
+use crate::services::review_service::ReviewService;
 
 // ─── Shared Application State ────────────────────────────────
 
@@ -42,6 +48,12 @@ use crate::services::auth_service::AuthService;
 #[derive(Clone)]
 pub struct AppState {
     pub auth_service: AuthService,
+    pub cart_service: CartService,
+    pub order_service: OrderService,
+    pub payment_service: PaymentService,
+    pub product_service: ProductService,
+    pub review_service: ReviewService,
+    pub jwt_secret: String,
 }
 
 // ─── Main ────────────────────────────────────────────────────
@@ -72,7 +84,21 @@ async fn main() {
         config.jwt_expiration_hours,
     );
 
-    let state = AppState { auth_service };
+    let cart_service = CartService::new(pool.clone());
+    let order_service = OrderService::new(pool.clone());
+    let payment_service = PaymentService::new(pool.clone());
+    let product_service = ProductService::new(pool.clone());
+    let review_service = ReviewService::new(pool.clone());
+
+    let state = AppState {
+        auth_service,
+        cart_service,
+        order_service,
+        payment_service,
+        product_service,
+        review_service,
+        jwt_secret: config.jwt_secret.clone(),
+    };
 
     // ── Build router ─────────────────────────────────────────
     // CORS is configured to allow any origin during development.
@@ -84,6 +110,11 @@ async fn main() {
 
     let app = Router::new()
         .merge(auth_routes::routes())
+        .merge(cart_routes::routes())
+        .merge(order_routes::routes())
+        .merge(payment_routes::routes())
+        .merge(product_routes::routes())
+        .merge(review_routes::routes())
         .layer(cors)
         .layer(TraceLayer::new_for_http())
         .with_state(state);

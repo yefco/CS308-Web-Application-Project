@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Container,
@@ -15,131 +15,106 @@ import {
   TextField,
   MenuItem,
   Paper,
+  Snackbar,
+  Alert,
+  CircularProgress,
 } from '@mui/material';
-import { ShoppingCart, FavoriteBorder, Favorite } from '@mui/icons-material';
+import { ShoppingCart, FavoriteBorder, Favorite, RateReview } from '@mui/icons-material';
+import { useCart } from '../context/CartContext';
+import RatingsModal from '../components/RatingsModal';
+import ProductDetailModal from '../components/ProductDetailModal';
 import '../styles/HomePage.css';
+
+// Fallback images by product name
+const PRODUCT_IMAGES = {
+  'MacBook Pro 14"': 'https://cdsassets.apple.com/live/SZLF0YNV/images/sp/111902_mbp14-silver2.png',
+  'iPhone 15 Pro': 'https://cdsassets.apple.com/live/7WUAS350/images/tech-specs/iphone-15-pro-max.png',
+  'iPad Air': 'https://store.storeimages.cdn-apple.com/1/as-images.apple.com/is/ipad-air-finish-select-gallery-202405-13inch-blue-wifi?wid=5120&hei=2880&fmt=p-jpg&qlt=80&sp=yes&strip=yes&trim&ex=536&ey=402&align=center&resizesource&unsharp=1.5x1+0.7+0.02&cox=0&coy=0&cdx=536&cdy=402',
+  'AirPods Pro': 'https://productimages.hepsiburada.net/s/337/375-375/110000088116931.jpg',
+  'Dell XPS 13': 'https://m.media-amazon.com/images/I/710EGJBdIML._AC_UF894,1000_QL80_.jpg',
+  'Samsung Galaxy S24': 'https://assets.mmsrg.com/isr/166325/c1/-/ASSET_MMS_135895764?x=536&y=402&format=jpg&quality=80&sp=yes&strip=yes&trim&ex=536&ey=402&align=center&resizesource&unsharp=1.5x1+0.7+0.02&cox=0&coy=0&cdx=536&cdy=402',
+  'Magic Keyboard': 'https://cdn.vatanbilgisayar.com/Upload/PRODUCT/apple/thumb/148699-1_large.jpg',
+  'Lenovo ThinkPad': 'https://p1-ofp.static.pub/fes/cms/2023/02/13/5tlm0hunv3l71hzse5hlxsafgw4aw0954514.png',
+};
 
 const HomePage = ({ isLoggedIn }) => {
   const navigate = useNavigate();
+  const { addItem } = useCart();
   const [favorites, setFavorites] = useState([]);
-  const [cartCount, setCartCount] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState('popularity');
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
+  const [snackbarSeverity, setSnackbarSeverity] = useState('success');
+  const [products, setProducts] = useState([]);
+  const [apiCategories, setApiCategories] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [imageErrors, setImageErrors] = useState({});
+  const [ratingsModalOpen, setRatingsModalOpen] = useState(false);
+  const [selectedProductForRating, setSelectedProductForRating] = useState(null);
+  const [detailModalOpen, setDetailModalOpen] = useState(false);
+  const [selectedProductForDetail, setSelectedProductForDetail] = useState(null);
+
+  const fetchReviewsForProducts = async (productList) => {
+    const reviewResults = await Promise.all(
+      productList.map(p =>
+        fetch(`/api/products/${p.id}/ratings`)
+          .then(r => r.json())
+          .catch(() => ({ average_rating: 0, total_reviews: 0 }))
+      )
+    );
+    return productList.map((p, i) => ({
+      ...p,
+      rating: reviewResults[i].average_rating || 0,
+      reviews: reviewResults[i].total_reviews || 0,
+    }));
+  };
+
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        const [productsRes, categoriesRes] = await Promise.all([
+          fetch('/api/products'),
+          fetch('/api/categories'),
+        ]);
+        const productsData = await productsRes.json();
+        const categoriesData = await categoriesRes.json();
+
+        const rawProducts = Array.isArray(productsData) ? productsData : (productsData.products ?? []);
+        const rawCategories = Array.isArray(categoriesData) ? categoriesData : (categoriesData.categories ?? []);
+
+        setApiCategories(rawCategories);
+
+        const mapped = rawProducts.map(p => ({
+          id: p.product_id,
+          name: p.product_name,
+          category: rawCategories.find(c => c.category_id === p.category_id)?.category_name ?? '',
+          price: parseFloat(p.price),
+          originalPrice: parseFloat(p.price),
+          image: PRODUCT_IMAGES[p.product_name] || null,
+          rating: 0,
+          reviews: 0,
+          stock: p.stock_quantity,
+          discount: 0,
+          description: p.description ?? '',
+        }));
+
+        const withReviews = await fetchReviewsForProducts(mapped);
+        setProducts(withReviews);
+      } catch {
+        setProducts([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
 
   const categories = [
-    { id: 1, name: 'All Products', value: 'all' },
-    { id: 2, name: 'Laptops', value: 'laptops' },
-    { id: 3, name: 'Smartphones', value: 'smartphones' },
-    { id: 4, name: 'Tablets', value: 'tablets' },
-    { id: 5, name: 'Accessories', value: 'accessories' },
-  ];
-
-  const products = [
-    {
-      id: 1,
-      name: 'MacBook Pro 14"',
-      category: 'laptops',
-      price: 1999,
-      originalPrice: 2199,
-      image: 'https://cdsassets.apple.com/live/SZLF0YNV/images/sp/111902_mbp14-silver2.png',
-      rating: 4.8,
-      reviews: 245,
-      stock: 12,
-      discount: 9,
-      description: 'High-performance laptop with M3 Max chip',
-    },
-    {
-      id: 2,
-      name: 'iPhone 15 Pro',
-      category: 'smartphones',
-      price: 999,
-      originalPrice: 1099,
-      image: 'https://cdsassets.apple.com/live/7WUAS350/images/tech-specs/iphone-15-pro-max.png',
-      rating: 4.7,
-      reviews: 512,
-      stock: 25,
-      discount: 9,
-      description: 'Latest flagship smartphone with advanced camera',
-    },
-    {
-      id: 3,
-      name: 'iPad Air',
-      category: 'tablets',
-      price: 599,
-      originalPrice: 699,
-      image: 'https://store.storeimages.cdn-apple.com/1/as-images.apple.com/is/ipad-air-storage-select-202405-13inch-space-gray-wifi_FMT_WHH?wid=1280&hei=720&fmt=p-jpg&qlt=80&.v=TENLTVRoeFdHUUI5ZE1ZZmxpQUlNMm5pQUoxb0NIVEJFSjRVRzZ4dzV5VE52YTlHWkltOWpNQVF4Y3VwTzdmWGl1WEttbFlFejZ0L0VqVlhGc0pKT3BmbTBuZmdjbmVyUEN6U1pnb2VjUDh3Qjhvd1BnZkhnUFFYU1JJMGh5alFTUzBLNXZ0QTA0SmlDNU1IU2czNjMzNXFNVzc5YkZmK2I4YzJ4ZndkZUdj&traceId=1r',
-      rating: 4.5,
-      reviews: 189,
-      stock: 18,
-      discount: 14,
-      description: 'Versatile tablet perfect for work and creativity',
-    },
-    {
-      id: 4,
-      name: 'AirPods Pro',
-      category: 'accessories',
-      price: 249,
-      originalPrice: 299,
-      image: 'https://www.apple.com/v/airpods-pro/q/images/overview/welcome/hero_startframe__bfinf01b59si_large.jpg',
-      rating: 4.6,
-      reviews: 328,
-      stock: 45,
-      discount: 17,
-      description: 'Premium wireless earbuds with noise cancellation',
-    },
-    {
-      id: 5,
-      name: 'Dell XPS 13',
-      category: 'laptops',
-      price: 1299,
-      originalPrice: 1499,
-      image: 'https://m.media-amazon.com/images/I/710EGJBdIML._AC_UF894,1000_QL80_.jpg',
-      rating: 4.7,
-      reviews: 178,
-      stock: 15,
-      discount: 13,
-      description: 'Ultrabook with stunning display and portability',
-    },
-    {
-      id: 6,
-      name: 'Samsung Galaxy S24',
-      category: 'smartphones',
-      price: 899,
-      originalPrice: 999,
-      image: 'https://assets.mmsrg.com/isr/166325/c1/-/ASSET_MMS_135895764?x=536&y=402&format=jpg&quality=80&sp=yes&strip=yes&trim&ex=536&ey=402&align=center&resizesource&unsharp=1.5x1+0.7+0.02&cox=0&coy=0&cdx=536&cdy=402',
-      rating: 4.6,
-      reviews: 421,
-      stock: 30,
-      discount: 10,
-      description: 'Powerful Android flagship with excellent display',
-    },
-    {
-      id: 7,
-      name: 'Magic Keyboard',
-      category: 'accessories',
-      price: 149,
-      originalPrice: 179,
-      image: 'https://encrypted-tbn0.gstatic.com/shopping?q=tbn:ANd9GcQG2ZyUQDDZ0BJLC2K5suq_HX3kVCS5VkvfgMJdXfxcI5Ehn0sCQkCnlK2FTRv9uPsbwE6EKl9GQyUoUJ9BCzw3c80mdjUEKth3YfvviZOJABR1yYqVJMKoXhUc',
-      rating: 4.4,
-      reviews: 95,
-      stock: 50,
-      discount: 17,
-      description: 'Wireless keyboard for seamless typing experience',
-    },
-    {
-      id: 8,
-      name: 'Lenovo ThinkPad',
-      category: 'laptops',
-      price: 849,
-      originalPrice: 999,
-      image: 'https://p1-ofp.static.pub/fes/cms/2023/02/13/5tlm0hunv3l71hzse5hlxsafgw4aw0954514.png',
-      rating: 4.5,
-      reviews: 156,
-      stock: 20,
-      discount: 15,
-      description: 'Business laptop with reliability and performance',
-    },
+    { id: 0, name: 'All Products', value: 'all' },
+    ...apiCategories.map(c => ({ id: c.category_id, name: c.category_name, value: c.category_name })),
   ];
 
   const filteredAndSortedProducts = products
@@ -156,12 +131,15 @@ const HomePage = ({ isLoggedIn }) => {
       return 0;
     });
 
-  const handleAddToCart = (productId) => {
-    if (!isLoggedIn) {
-      navigate('/login');
-      return;
-    }
-    setCartCount(cartCount + 1);
+  const handleAddToCart = (product) => {
+    addItem(product, 1);
+    setSnackbarMessage(`${product.name} added to cart!`);
+    setSnackbarSeverity('success');
+    setSnackbarOpen(true);
+  };
+
+  const handleSnackbarClose = () => {
+    setSnackbarOpen(false);
   };
 
   const toggleFavorite = (productId) => {
@@ -169,6 +147,47 @@ const HomePage = ({ isLoggedIn }) => {
       setFavorites(favorites.filter(id => id !== productId));
     } else {
       setFavorites([...favorites, productId]);
+    }
+  };
+
+  const handleOpenRatingsModal = (product) => {
+    setSelectedProductForRating(product);
+    setRatingsModalOpen(true);
+  };
+
+  const handleCloseRatingsModal = () => {
+    setRatingsModalOpen(false);
+    setSelectedProductForRating(null);
+  };
+
+  const handleOpenDetail = (product) => {
+    setSelectedProductForDetail(product);
+    setDetailModalOpen(true);
+  };
+
+  const handleCloseDetail = () => {
+    setDetailModalOpen(false);
+    setSelectedProductForDetail(null);
+  };
+
+  const handleRatingSuccess = async () => {
+    setSnackbarMessage('Thank you for your rating!');
+    setSnackbarSeverity('success');
+    setSnackbarOpen(true);
+    if (selectedProductForRating) {
+      try {
+        const res = await fetch(`/api/products/${selectedProductForRating.id}/ratings`);
+        const data = await res.json();
+        setProducts(prev =>
+          prev.map(p =>
+            p.id === selectedProductForRating.id
+              ? { ...p, rating: data.average_rating || 0, reviews: data.total_reviews || 0 }
+              : p
+          )
+        );
+      } catch {
+        // ignore refresh error
+      }
     }
   };
 
@@ -208,7 +227,7 @@ const HomePage = ({ isLoggedIn }) => {
         </Container>
       </Box>
 
-      <Container sx={{ py: 6 }}>
+      <Container maxWidth="xl" sx={{ py: 6 }}>
         {/* Filters and Search */}
         <Paper elevation={0} sx={{ p: 3, mb: 4, bgcolor: '#f8f9fa' }}>
           <Grid container spacing={2} sx={{ mb: 2 }}>
@@ -260,18 +279,31 @@ const HomePage = ({ isLoggedIn }) => {
         </Paper>
 
         {/* Products Grid */}
-        {filteredAndSortedProducts.length > 0 ? (
+        {loading ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
+            <CircularProgress />
+          </Box>
+        ) : filteredAndSortedProducts.length > 0 ? (
           <Grid container spacing={3}>
             {filteredAndSortedProducts.map((product) => (
-              <Grid item xs={12} sm={6} md={4} lg={3} key={product.id}>
-                <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column', transition: 'transform 0.3s, box-shadow 0.3s', '&:hover': { transform: 'translateY(-8px)', boxShadow: 6 } }}>
-                  <Box sx={{ position: 'relative', width: '100%', height: 160, overflow: 'hidden', bgcolor: '#f5f5f5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <CardMedia
-                      component="img"
-                      image={product.image}
-                      alt={product.name}
-                      sx={{ maxHeight: '100%', maxWidth: '100%', objectFit: 'contain' }}
-                    />
+              <Grid item xs={12} sm={6} md={4} lg={4} key={product.id}>
+                <Card sx={{ height: '500px', display: 'flex', flexDirection: 'column', transition: 'transform 0.3s, box-shadow 0.3s', '&:hover': { transform: 'translateY(-8px)', boxShadow: 6 }, cursor: 'pointer' }}>
+                  <Box sx={{ position: 'relative' }} onClick={() => handleOpenDetail(product)}>
+                    <div className="product-image-container">
+                      {product.image && !imageErrors[product.id] ? (
+                        <CardMedia
+                          component="img"
+                          image={product.image}
+                          alt={product.name}
+                          sx={{ maxHeight: '160px', maxWidth: '100%', objectFit: 'contain' }}
+                          onError={() => setImageErrors(prev => ({ ...prev, [product.id]: true }))}
+                        />
+                      ) : (
+                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', color: '#bbb' }}>
+                          <Typography variant="caption" color="textSecondary">No Image</Typography>
+                        </Box>
+                      )}
+                    </div>
                     {product.discount > 0 && (
                       <Chip
                         label={`-${product.discount}%`}
@@ -291,11 +323,11 @@ const HomePage = ({ isLoggedIn }) => {
                       )}
                     </Button>
                   </Box>
-                  <CardContent sx={{ flexGrow: 1 }}>
-                    <Typography gutterBottom variant="h6" component="h3" sx={{ fontWeight: 'bold' }}>
+                  <CardContent sx={{ flexGrow: 1 }} onClick={() => handleOpenDetail(product)}>
+                    <Typography gutterBottom variant="h6" component="h3" sx={{ fontWeight: 'bold', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', minHeight: '3.5rem' }}>
                       {product.name}
                     </Typography>
-                    <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
+                    <Typography variant="body2" color="textSecondary" sx={{ mb: 2, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
                       {product.description}
                     </Typography>
                     <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
@@ -306,13 +338,8 @@ const HomePage = ({ isLoggedIn }) => {
                     </Box>
                     <Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
                       <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#27ae60' }}>
-                        ${product.price}
+                        ${product.price.toFixed(2)}
                       </Typography>
-                      {product.originalPrice > product.price && (
-                        <Typography variant="body2" sx={{ textDecoration: 'line-through', color: '#7f8c8d' }}>
-                          ${product.originalPrice}
-                        </Typography>
-                      )}
                     </Box>
                     <Typography variant="body2" color={product.stock > 5 ? '#27ae60' : '#e74c3c'}>
                       {product.stock > 0 ? `${product.stock} in stock` : 'Out of stock'}
@@ -323,11 +350,22 @@ const HomePage = ({ isLoggedIn }) => {
                       fullWidth
                       variant="contained"
                       startIcon={<ShoppingCart />}
-                      onClick={() => handleAddToCart(product.id)}
+                      onClick={() => handleAddToCart(product)}
                       disabled={product.stock === 0}
                       sx={{ bgcolor: '#3498db', '&:hover': { bgcolor: '#2980b9' } }}
                     >
                       Add to Cart
+                    </Button>
+                  </CardActions>
+                  <CardActions>
+                    <Button
+                      fullWidth
+                      variant="outlined"
+                      startIcon={<RateReview />}
+                      onClick={() => handleOpenRatingsModal(product)}
+                      sx={{ color: '#27ae60', borderColor: '#27ae60', '&:hover': { bgcolor: '#f0f8f4' } }}
+                    >
+                      Rate & Review
                     </Button>
                   </CardActions>
                 </Card>
@@ -342,6 +380,39 @@ const HomePage = ({ isLoggedIn }) => {
           </Box>
         )}
       </Container>
+
+      {/* Product Detail Modal */}
+      <ProductDetailModal
+        open={detailModalOpen}
+        product={selectedProductForDetail}
+        onClose={handleCloseDetail}
+        onOpenRatings={handleOpenRatingsModal}
+        isLoggedIn={isLoggedIn}
+      />
+
+      {/* Ratings Modal */}
+      {selectedProductForRating && (
+        <RatingsModal
+          open={ratingsModalOpen}
+          productId={selectedProductForRating.id}
+          productName={selectedProductForRating.name}
+          onClose={handleCloseRatingsModal}
+          onSuccess={handleRatingSuccess}
+          isLoggedIn={isLoggedIn}
+        />
+      )}
+
+      {/* Snackbar for cart feedback */}
+      <Snackbar
+        open={snackbarOpen}
+        autoHideDuration={3000}
+        onClose={handleSnackbarClose}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+      >
+        <Alert onClose={handleSnackbarClose} severity={snackbarSeverity} sx={{ width: '100%' }}>
+          {snackbarMessage}
+        </Alert>
+      </Snackbar>
     </div>
   );
 };
