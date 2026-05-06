@@ -128,6 +128,7 @@ const HomePage = ({ isLoggedIn }) => {
       if (sortBy === 'price-low') return a.price - b.price;
       if (sortBy === 'price-high') return b.price - a.price;
       if (sortBy === 'rating') return b.rating - a.rating;
+      if (sortBy === 'popularity') return b.reviews - a.reviews;
       return 0;
     });
 
