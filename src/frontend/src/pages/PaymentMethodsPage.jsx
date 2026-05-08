@@ -669,6 +669,7 @@ const PaymentMethodsPage = () => {
         onClose={() => { setInvoiceOpen(false); navigate('/order-tracking'); }}
         maxWidth="sm"
         fullWidth
+        slotProps={{ paper: { id: 'invoice-print-area' } }}
       >
         <DialogTitle sx={{ bgcolor: '#27ae60', color: '#fff', display: 'flex', alignItems: 'center', gap: 1 }}>
           <CheckCircleIcon />
@@ -762,8 +763,8 @@ const PaymentMethodsPage = () => {
         })()}
 
         {emailSent && (
-          <Alert severity="success" sx={{ mx: 3, mb: 1 }} icon={false}>
-            📧 Invoice emailed to <strong>{localStorage.getItem('userEmail') || 'your account'}</strong>
+          <Alert severity="success" sx={{ mx: 3, mb: 1 }} icon={false} className="invoice-email-alert">
+            📧 Mock invoice email sent to <strong>{localStorage.getItem('userEmail') || 'your account'}</strong> — confirmation logged on server
           </Alert>
         )}
         <DialogActions sx={{ px: 3, pb: 2, gap: 1 }}>
@@ -771,8 +772,9 @@ const PaymentMethodsPage = () => {
             variant="outlined"
             onClick={() => window.print()}
             sx={{ borderColor: '#7f8c8d', color: '#7f8c8d' }}
+            title="Opens browser print dialog — choose 'Save as PDF' to download"
           >
-            Download PDF
+            Print / Save as PDF
           </Button>
           <Button
             variant="contained"

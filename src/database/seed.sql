@@ -23,6 +23,14 @@ ON CONFLICT (category_name) DO NOTHING;
 --   product_id (serial), product_name, model, serial_number,
 --   description, stock_quantity, price, warranty_status, distributor_info
 
+-- ── Demo Product Reference ────────────────────────────────────────────────
+-- DEMO PRODUCT A (out of stock):  Samsung Galaxy S24  → stock_quantity = 0
+--   Search for: "Samsung" — Add to Cart button will be DISABLED
+-- DEMO PRODUCT B (exactly 1):    Lenovo ThinkPad X1  → stock_quantity = 1
+--   Search for: "Lenovo" — after purchase, stock drops to 0
+-- DEMO PRODUCT C (more than 1):  AirPods Pro         → stock_quantity = 20
+--   Search for: "AirPods" or "noise" — normal purchase flow
+
 INSERT INTO products
   (category_id, product_name, model, serial_number, description,
    stock_quantity, price, warranty_status, distributor_info)
