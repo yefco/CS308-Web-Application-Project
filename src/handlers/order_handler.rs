@@ -69,6 +69,39 @@ pub async fn update_delivery_status(
     Ok(Json(response))
 }
 
+/// POST /api/orders/:order_id/send-invoice-email — mock email sending for demo.
+/// Logs to console and returns a confirmation. Requires authentication.
+pub async fn send_invoice_email(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(order_id): Path<i32>,
+) -> Result<impl IntoResponse, AppError> {
+    let user_id = extract_authenticated_user_id(&headers, &state.jwt_secret)?;
+    let order = state.order_service.get_order(user_id, order_id).await?;
+    let user_email = {
+        use crate::middleware::auth::decode_jwt;
+        let auth = headers
+            .get(axum::http::header::AUTHORIZATION)
+            .and_then(|v| v.to_str().ok())
+            .and_then(|s| s.strip_prefix("Bearer ").map(|t| t.to_string()))
+            .unwrap_or_default();
+        let claims = decode_jwt(&auth, &state.jwt_secret)?;
+        claims.sub
+    };
+    tracing::info!(
+        "📧 [DEMO] Invoice email for Order #{} sent to user_id={} (total: ${:.2})",
+        order.order_id,
+        user_email,
+        order.total_amount
+    );
+    Ok(axum::Json(serde_json::json!({
+        "status": "sent",
+        "message": format!("Invoice for Order #{} has been emailed to you.", order.order_id),
+        "order_id": order.order_id,
+        "total_amount": order.total_amount,
+    })))
+}
+
 fn require_sales_manager(headers: &HeaderMap, jwt_secret: &str) -> Result<(), AppError> {
     let auth_header = headers
         .get(axum::http::header::AUTHORIZATION)

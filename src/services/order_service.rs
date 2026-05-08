@@ -1,7 +1,7 @@
 use sqlx::PgPool;
 
 use crate::models::order::{
-    OrderItemResponse, OrderResponse, OrderStatus, OrderSummaryResponse, OrdersResponse,
+    OrderItemResponse, OrderResponse, OrderStatus, OrdersResponse,
     PlaceOrderRequest,
 };
 use crate::repository::{cart_repository, order_repository, product_repository, user_repository};
@@ -122,21 +122,34 @@ impl OrderService {
         })
     }
 
-    /// Returns all orders for the authenticated customer.
+    /// Returns all orders for the authenticated customer, each with its line items.
     pub async fn list_orders(&self, user_id: i32) -> Result<OrdersResponse, AppError> {
         let orders = order_repository::list_user_orders(&self.pool, user_id).await?;
-        let summaries = orders
-            .into_iter()
-            .map(|o| OrderSummaryResponse {
+        let mut responses = Vec::new();
+        for o in orders {
+            let db_items = order_repository::get_order_items(&self.pool, o.order_id).await?;
+            let items = db_items
+                .into_iter()
+                .map(|i| OrderItemResponse {
+                    order_item_id: i.order_item_id,
+                    product_id: i.product_id,
+                    product_name: i.product_name,
+                    quantity: i.quantity,
+                    unit_price: i.unit_price,
+                    subtotal: i.unit_price * i.quantity as f64,
+                })
+                .collect();
+            responses.push(OrderResponse {
                 order_id: o.order_id,
                 status: o.status,
                 delivery_address: o.delivery_address,
                 total_amount: o.total_amount,
+                items,
                 created_at: o.created_at,
                 updated_at: o.updated_at,
-            })
-            .collect();
-        Ok(OrdersResponse { orders: summaries })
+            });
+        }
+        Ok(OrdersResponse { orders: responses })
     }
 
     /// Returns the full order detail (with items) for the authenticated customer.
@@ -169,21 +182,34 @@ impl OrderService {
         })
     }
 
-    /// Returns all orders across all users (delivery department view).
+    /// Returns all orders across all users (delivery department view), each with its line items.
     pub async fn list_all_orders(&self) -> Result<OrdersResponse, AppError> {
         let orders = order_repository::list_all_orders(&self.pool).await?;
-        let summaries = orders
-            .into_iter()
-            .map(|o| OrderSummaryResponse {
+        let mut responses = Vec::new();
+        for o in orders {
+            let db_items = order_repository::get_order_items(&self.pool, o.order_id).await?;
+            let items = db_items
+                .into_iter()
+                .map(|i| OrderItemResponse {
+                    order_item_id: i.order_item_id,
+                    product_id: i.product_id,
+                    product_name: i.product_name,
+                    quantity: i.quantity,
+                    unit_price: i.unit_price,
+                    subtotal: i.unit_price * i.quantity as f64,
+                })
+                .collect();
+            responses.push(OrderResponse {
                 order_id: o.order_id,
                 status: o.status,
                 delivery_address: o.delivery_address,
                 total_amount: o.total_amount,
+                items,
                 created_at: o.created_at,
                 updated_at: o.updated_at,
-            })
-            .collect();
-        Ok(OrdersResponse { orders: summaries })
+            });
+        }
+        Ok(OrdersResponse { orders: responses })
     }
 
     /// Updates the delivery status of an order (delivery department only).

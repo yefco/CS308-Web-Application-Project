@@ -10,6 +10,7 @@ import PaymentMethodsPage from './pages/PaymentMethodsPage';
 import ProductManagerPage from './pages/ProductManagerPage';
 import CommentApprovalPage from './pages/CommentApprovalPage';
 import OrderTrackingPage from './pages/OrderTrackingPage';
+import DeliveryPage from './pages/DeliveryPage';
 import { CartProvider, useCart } from './context/CartContext';
 import './App.css';
 
@@ -77,6 +78,7 @@ function AppContent() {
           <Route path="/product-manager" element={<ProductManagerPage />} />
           <Route path="/order-tracking" element={<OrderTrackingPage isLoggedIn={isLoggedIn} />} />
           <Route path="/product-manager/comment-approval" element={<CommentApprovalPage />} />
+          <Route path="/delivery" element={<DeliveryPage />} />
         </Routes>
       </Box>
     </Box>

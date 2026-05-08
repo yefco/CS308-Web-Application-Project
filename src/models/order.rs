@@ -75,5 +75,5 @@ pub struct OrderSummaryResponse {
 
 #[derive(Debug, Serialize)]
 pub struct OrdersResponse {
-    pub orders: Vec<OrderSummaryResponse>,
+    pub orders: Vec<OrderResponse>,
 }

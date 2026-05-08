@@ -37,6 +37,7 @@ const Header = ({ isLoggedIn, onLogout }) => {
     }
   })();
   const isProductManager = userRole === 'product_manager' || userRole === 'ProductManager';
+  const isSalesManager = userRole === 'sales_manager' || userRole === 'SalesManager';
 
   const handleMobileMenuOpen = (e) => setMobileMenuAnchor(e.currentTarget);
   const handleMobileMenuClose = () => setMobileMenuAnchor(null);
@@ -158,6 +159,15 @@ const Header = ({ isLoggedIn, onLogout }) => {
                     >
                       <Dashboard sx={{ mr: 1, fontSize: '1.2rem' }} />
                       Product Manager
+                    </MenuItem>
+                  )}
+                  {isSalesManager && (
+                    <MenuItem
+                      onClick={() => { navigate('/delivery'); handleUserMenuClose(); }}
+                      sx={{ color: '#27ae60', fontWeight: 'bold' }}
+                    >
+                      <Dashboard sx={{ mr: 1, fontSize: '1.2rem' }} />
+                      Delivery Dashboard
                     </MenuItem>
                   )}
                   <MenuItem onClick={() => { navigate('/profile'); handleUserMenuClose(); }}>

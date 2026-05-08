@@ -38,7 +38,7 @@ VALUES
 
   (1, 'Lenovo ThinkPad X1', 'X1C-G12',   'SN-TPX1-001',
    'Intel Core i7-1365U, 16 GB RAM, 1 TB SSD. Business flagship.',
-   3, 1449.00, TRUE, 'Lenovo Group Ltd — LNV-DIST-EU'),
+   1, 1449.00, TRUE, 'Lenovo Group Ltd — LNV-DIST-EU'),
 
   -- Smartphones (category 2)
   (2, 'iPhone 15 Pro',    'A3102',        'SN-IP15P-001',

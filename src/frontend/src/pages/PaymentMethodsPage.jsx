@@ -70,6 +70,7 @@ const PaymentMethodsPage = () => {
 
   const [invoiceOpen, setInvoiceOpen] = useState(false);
   const [completedOrder, setCompletedOrder] = useState(null);
+  const [emailSent, setEmailSent] = useState(false);
 
   const isEditing = useMemo(() => editingPaymentId !== null, [editingPaymentId]);
 
@@ -256,8 +257,14 @@ const PaymentMethodsPage = () => {
       }
       const orderData = await res.json();
       await clear();
+      setEmailSent(false);
       setCompletedOrder({ ...orderData, paymentLabel: getPaymentMethodLabel(), deliveryAddress: deliveryAddress.trim() });
       setInvoiceOpen(true);
+      // Fire mock email (non-blocking)
+      fetch(`/api/orders/${orderData.order_id}/send-invoice-email`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      }).then(() => setEmailSent(true)).catch(() => {});
     } catch (err) {
       setErrorMessage(err.message);
     } finally {
@@ -754,10 +761,19 @@ const PaymentMethodsPage = () => {
           );
         })()}
 
+        {emailSent && (
+          <Alert severity="success" sx={{ mx: 3, mb: 1 }} icon={false}>
+            📧 Invoice emailed to <strong>{localStorage.getItem('userEmail') || 'your account'}</strong>
+          </Alert>
+        )}
         <DialogActions sx={{ px: 3, pb: 2, gap: 1 }}>
-          <Typography variant="caption" sx={{ color: '#7f8c8d', flex: 1 }}>
-            A copy of your order is saved under "My Orders".
-          </Typography>
+          <Button
+            variant="outlined"
+            onClick={() => window.print()}
+            sx={{ borderColor: '#7f8c8d', color: '#7f8c8d' }}
+          >
+            Download PDF
+          </Button>
           <Button
             variant="contained"
             onClick={() => { setInvoiceOpen(false); navigate('/order-tracking'); }}
