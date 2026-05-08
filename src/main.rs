@@ -9,6 +9,7 @@
 //!
 //! To run the server:
 //! cargo run
+//!
 
 mod config;
 mod database;
