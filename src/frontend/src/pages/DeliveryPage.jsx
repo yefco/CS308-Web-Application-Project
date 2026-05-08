@@ -34,9 +34,9 @@ function authHeaders() {
 }
 
 const STATUS_OPTIONS = [
-  { value: 'Processing', label: 'Processing' },
-  { value: 'InTransit',  label: 'In Transit' },
-  { value: 'Delivered',  label: 'Delivered'  },
+  { value: 'processing',  label: 'Processing' },
+  { value: 'in_transit',  label: 'In Transit' },
+  { value: 'delivered',   label: 'Delivered'  },
 ];
 
 const STATUS_COLOR = {
@@ -211,12 +211,7 @@ const DeliveryPage = () => {
                       <TableCell>
                         <FormControl size="small" sx={{ minWidth: 140 }} disabled={isUpdating}>
                           <Select
-                            value={(() => {
-                              const s = normalizeStatus(status);
-                              if (s === 'in_transit') return 'InTransit';
-                              if (s === 'delivered')  return 'Delivered';
-                              return 'Processing';
-                            })()}
+                            value={normalizeStatus(status)}
                             onChange={(e) => handleStatusChange(orderId, e.target.value)}
                           >
                             {STATUS_OPTIONS.map(opt => (

@@ -64,18 +64,23 @@ const OrderTrackingPage = ({ isLoggedIn }) => {
 
   useEffect(() => {
     if (!isLoggedIn) return;
+    let cancelled = false;
     (async () => {
       try {
         setLoading(true);
+        setError(null);
         const data = await getUserOrders();
-        const list = Array.isArray(data) ? data : (data?.orders ?? []);
-        setOrders(list);
+        if (!cancelled) {
+          const list = Array.isArray(data) ? data : (data?.orders ?? []);
+          setOrders(list);
+        }
       } catch (err) {
-        setError(err.message || 'Failed to load orders.');
+        if (!cancelled) setError(err.message || 'Failed to load orders.');
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     })();
+    return () => { cancelled = true; };
   }, [isLoggedIn]);
 
   if (loading) {

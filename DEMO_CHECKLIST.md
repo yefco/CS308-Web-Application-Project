@@ -18,6 +18,12 @@ psql online_store < src/database/schema.sql
 
 # Load seed data (categories + products)
 psql online_store < src/database/seed.sql
+
+# Load demo users (customer, manager, sales_manager)
+psql online_store < src/database/demo_users.sql
+
+# Load demo reviews (enables meaningful popularity sort)
+psql online_store < src/database/reviews_seed.sql
 ```
 
 ### 2. Create Demo Users

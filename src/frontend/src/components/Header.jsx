@@ -36,6 +36,7 @@ const Header = ({ isLoggedIn, onLogout }) => {
       return null;
     }
   })();
+  const isCustomer = userRole === 'customer' || userRole === 'Customer';
   const isProductManager = userRole === 'product_manager' || userRole === 'ProductManager';
   const isSalesManager = userRole === 'sales_manager' || userRole === 'SalesManager';
 
@@ -170,15 +171,21 @@ const Header = ({ isLoggedIn, onLogout }) => {
                       Delivery Dashboard
                     </MenuItem>
                   )}
-                  <MenuItem onClick={() => { navigate('/profile'); handleUserMenuClose(); }}>
-                    My Profile
-                  </MenuItem>
-                  <MenuItem onClick={() => { navigate('/order-tracking'); handleUserMenuClose(); }}>
-                    Track Orders
-                  </MenuItem>
-                  <MenuItem onClick={() => { navigate('/wishlist'); handleUserMenuClose(); }}>
-                    Wishlist
-                  </MenuItem>
+                  {isCustomer && (
+                    <MenuItem onClick={() => { navigate('/profile'); handleUserMenuClose(); }}>
+                      My Profile
+                    </MenuItem>
+                  )}
+                  {isCustomer && (
+                    <MenuItem onClick={() => { navigate('/order-tracking'); handleUserMenuClose(); }}>
+                      Track Orders
+                    </MenuItem>
+                  )}
+                  {isCustomer && (
+                    <MenuItem onClick={() => { navigate('/wishlist'); handleUserMenuClose(); }}>
+                      Wishlist
+                    </MenuItem>
+                  )}
                   <MenuItem divider />
                   <MenuItem onClick={handleLogout} sx={{ color: '#e74c3c' }}>
                     <LogoutIcon sx={{ mr: 1, fontSize: '1.2rem' }} />
