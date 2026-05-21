@@ -214,3 +214,32 @@ h6 { font-size: 1rem; }
   }
 }
 
+/* ── Invoice print styles ─────────────────────────────────────────────────── */
+/* When window.print() is called from the invoice dialog, only the invoice    */
+/* area is rendered. Everything else is hidden via visibility:hidden so that  */
+/* the MUI Dialog portal (rendered outside #root) remains printable.          */
+@media print {
+  body { visibility: hidden; margin: 0; padding: 0; background: white; }
+
+  #invoice-print-area,
+  #invoice-print-area * { visibility: visible; }
+
+  #invoice-print-area {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 32px !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    background: white !important;
+  }
+
+  /* Hide dialog action buttons (Download PDF / View Orders) when printing */
+  #invoice-print-area .MuiDialogActions-root { display: none !important; }
+  /* Hide email alert in print — only show invoice content */
+  #invoice-print-area .invoice-email-alert { display: none !important; }
+}
+

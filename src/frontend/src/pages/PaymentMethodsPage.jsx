@@ -21,11 +21,17 @@ import {
   InputLabel,
   Select,
   MenuItem,
+  Table,
+  TableHead,
+  TableBody,
+  TableRow,
+  TableCell,
 } from '@mui/material';
 import {
   Delete as DeleteIcon,
   Edit as EditIcon,
   CreditCard as CreditCardIcon,
+  CheckCircle as CheckCircleIcon,
 } from '@mui/icons-material';
 import { useCart } from '../context/CartContext';
 import {
@@ -61,6 +67,10 @@ const PaymentMethodsPage = () => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState(null);
   const [confirmLoading, setConfirmLoading] = useState(false);
+
+  const [invoiceOpen, setInvoiceOpen] = useState(false);
+  const [completedOrder, setCompletedOrder] = useState(null);
+  const [emailSent, setEmailSent] = useState(false);
 
   const isEditing = useMemo(() => editingPaymentId !== null, [editingPaymentId]);
 
@@ -245,8 +255,16 @@ const PaymentMethodsPage = () => {
         const err = await res.json().catch(() => ({}));
         throw new Error(err.error || err.message || 'Failed to place order.');
       }
+      const orderData = await res.json();
       await clear();
-      navigate('/order-tracking');
+      setEmailSent(false);
+      setCompletedOrder({ ...orderData, paymentLabel: getPaymentMethodLabel(), deliveryAddress: deliveryAddress.trim() });
+      setInvoiceOpen(true);
+      // Fire mock email (non-blocking)
+      fetch(`/api/orders/${orderData.order_id}/send-invoice-email`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      }).then(() => setEmailSent(true)).catch(() => {});
     } catch (err) {
       setErrorMessage(err.message);
     } finally {
@@ -641,6 +659,129 @@ const PaymentMethodsPage = () => {
           </Button>
           <Button onClick={handleDelete} color="error" variant="contained">
             Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* ── Invoice Dialog ───────────────────────────────────── */}
+      <Dialog
+        open={invoiceOpen}
+        onClose={() => { setInvoiceOpen(false); navigate('/order-tracking'); }}
+        maxWidth="sm"
+        fullWidth
+        slotProps={{ paper: { id: 'invoice-print-area' } }}
+      >
+        <DialogTitle sx={{ bgcolor: '#27ae60', color: '#fff', display: 'flex', alignItems: 'center', gap: 1 }}>
+          <CheckCircleIcon />
+          Order Confirmed — Invoice
+        </DialogTitle>
+
+        {completedOrder && (() => {
+          const orderSubtotal = parseFloat(completedOrder.total_amount ?? 0);
+          const orderTax = parseFloat((orderSubtotal * 0.1).toFixed(2));
+          const orderShipping = 9.99;
+          const orderGrand = parseFloat((orderSubtotal + orderTax + orderShipping).toFixed(2));
+          const placedAt = completedOrder.created_at
+            ? new Date(completedOrder.created_at).toLocaleString()
+            : new Date().toLocaleString();
+
+          return (
+            <DialogContent sx={{ pt: 3 }}>
+              {/* Meta */}
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2, flexWrap: 'wrap', gap: 1 }}>
+                <Box>
+                  <Typography variant="caption" sx={{ color: '#7f8c8d', textTransform: 'uppercase', letterSpacing: 0.5 }}>Order ID</Typography>
+                  <Typography sx={{ fontWeight: 700, color: '#2c3e50' }}>#{completedOrder.order_id}</Typography>
+                </Box>
+                <Box sx={{ textAlign: 'right' }}>
+                  <Typography variant="caption" sx={{ color: '#7f8c8d', textTransform: 'uppercase', letterSpacing: 0.5 }}>Date</Typography>
+                  <Typography sx={{ fontWeight: 700, color: '#2c3e50' }}>{placedAt}</Typography>
+                </Box>
+              </Box>
+
+              <Divider sx={{ mb: 2 }} />
+
+              {/* Items */}
+              {completedOrder.items && completedOrder.items.length > 0 && (
+                <>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1, color: '#2c3e50' }}>Items</Typography>
+                  <Table size="small" sx={{ mb: 2 }}>
+                    <TableHead>
+                      <TableRow sx={{ bgcolor: '#f4f6f8' }}>
+                        <TableCell sx={{ fontWeight: 700 }}>Product</TableCell>
+                        <TableCell align="center" sx={{ fontWeight: 700 }}>Qty</TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 700 }}>Unit</TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 700 }}>Total</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {completedOrder.items.map((item, i) => (
+                        <TableRow key={i}>
+                          <TableCell>{item.product_name}</TableCell>
+                          <TableCell align="center">{item.quantity}</TableCell>
+                          <TableCell align="right">${parseFloat(item.unit_price).toFixed(2)}</TableCell>
+                          <TableCell align="right">${parseFloat(item.subtotal).toFixed(2)}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </>
+              )}
+
+              {/* Totals */}
+              <Box sx={{ bgcolor: '#f8f9fa', borderRadius: 1, p: 2, mb: 2 }}>
+                {[
+                  { label: 'Subtotal', value: `$${orderSubtotal.toFixed(2)}` },
+                  { label: 'Tax (10%)', value: `$${orderTax.toFixed(2)}` },
+                  { label: 'Shipping', value: `$${orderShipping.toFixed(2)}` },
+                ].map(({ label, value }) => (
+                  <Box key={label} sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+                    <Typography variant="body2" sx={{ color: '#7f8c8d' }}>{label}</Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>{value}</Typography>
+                  </Box>
+                ))}
+                <Divider sx={{ my: 1 }} />
+                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <Typography sx={{ fontWeight: 700 }}>Grand Total</Typography>
+                  <Typography sx={{ fontWeight: 700, color: '#27ae60', fontSize: '1.1rem' }}>${orderGrand.toFixed(2)}</Typography>
+                </Box>
+              </Box>
+
+              {/* Delivery & Payment */}
+              <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                <Box sx={{ flex: 1, minWidth: 140 }}>
+                  <Typography variant="caption" sx={{ color: '#7f8c8d', textTransform: 'uppercase', letterSpacing: 0.5 }}>Delivery Address</Typography>
+                  <Typography variant="body2" sx={{ color: '#2c3e50', mt: 0.3 }}>{completedOrder.deliveryAddress}</Typography>
+                </Box>
+                <Box sx={{ flex: 1, minWidth: 140 }}>
+                  <Typography variant="caption" sx={{ color: '#7f8c8d', textTransform: 'uppercase', letterSpacing: 0.5 }}>Payment</Typography>
+                  <Typography variant="body2" sx={{ color: '#2c3e50', mt: 0.3 }}>{completedOrder.paymentLabel}</Typography>
+                </Box>
+              </Box>
+            </DialogContent>
+          );
+        })()}
+
+        {emailSent && (
+          <Alert severity="success" sx={{ mx: 3, mb: 1 }} icon={false} className="invoice-email-alert">
+            📧 Mock invoice email sent to <strong>{localStorage.getItem('userEmail') || 'your account'}</strong> — confirmation logged on server
+          </Alert>
+        )}
+        <DialogActions sx={{ px: 3, pb: 2, gap: 1 }}>
+          <Button
+            variant="outlined"
+            onClick={() => window.print()}
+            sx={{ borderColor: '#7f8c8d', color: '#7f8c8d' }}
+            title="Opens browser print dialog — choose 'Save as PDF' to download"
+          >
+            Print / Save as PDF
+          </Button>
+          <Button
+            variant="contained"
+            onClick={() => { setInvoiceOpen(false); navigate('/order-tracking'); }}
+            sx={{ bgcolor: '#3498db', '&:hover': { bgcolor: '#2980b9' }, fontWeight: 'bold' }}
+          >
+            View My Orders
           </Button>
         </DialogActions>
       </Dialog>

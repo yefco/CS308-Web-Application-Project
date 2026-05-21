@@ -4,6 +4,7 @@ use axum::{
     response::IntoResponse,
     Json,
 };
+use chrono::Utc;
 
 use crate::middleware::auth::{decode_jwt, extract_authenticated_user_id};
 use crate::models::order::{PlaceOrderRequest, UpdateOrderStatusRequest};
@@ -67,6 +68,34 @@ pub async fn update_delivery_status(
         .update_delivery_status(order_id, payload.status)
         .await?;
     Ok(Json(response))
+}
+
+/// POST /api/orders/:order_id/send-invoice-email — mock email sending for demo.
+/// Logs to console with a clear marker and returns a structured confirmation
+/// that the frontend displays to the user. Requires authentication.
+pub async fn send_invoice_email(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(order_id): Path<i32>,
+) -> Result<impl IntoResponse, AppError> {
+    let user_id = extract_authenticated_user_id(&headers, &state.jwt_secret)?;
+    let order = state.order_service.get_order(user_id, order_id).await?;
+    let timestamp = Utc::now().to_rfc3339();
+    tracing::info!(
+        "📧 [DEMO-EMAIL] ORDER #{} | user_id={} | total=${:.2} | ts={}",
+        order.order_id,
+        user_id,
+        order.total_amount,
+        timestamp,
+    );
+    Ok(axum::Json(serde_json::json!({
+        "status": "sent",
+        "message": format!("Invoice for Order #{} has been queued for delivery.", order.order_id),
+        "order_id": order.order_id,
+        "total_amount": order.total_amount,
+        "recipient_user_id": user_id,
+        "sent_at": timestamp,
+    })))
 }
 
 fn require_sales_manager(headers: &HeaderMap, jwt_secret: &str) -> Result<(), AppError> {

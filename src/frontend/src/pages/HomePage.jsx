@@ -128,6 +128,7 @@ const HomePage = ({ isLoggedIn }) => {
       if (sortBy === 'price-low') return a.price - b.price;
       if (sortBy === 'price-high') return b.price - a.price;
       if (sortBy === 'rating') return b.rating - a.rating;
+      if (sortBy === 'popularity') return b.reviews - a.reviews;
       return 0;
     });
 
@@ -327,7 +328,7 @@ const HomePage = ({ isLoggedIn }) => {
                     <Typography gutterBottom variant="h6" component="h3" sx={{ fontWeight: 'bold', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', minHeight: '3.5rem' }}>
                       {product.name}
                     </Typography>
-                    <Typography variant="body2" color="textSecondary" sx={{ mb: 2, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+                    <Typography variant="body2" color="textSecondary" sx={{ mb: 2, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', minHeight: '2.6rem' }}>
                       {product.description}
                     </Typography>
                     <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>

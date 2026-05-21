@@ -12,6 +12,11 @@ pub fn routes() -> Router<AppState> {
         .route("/api/orders", post(order_handler::place_order))
         .route("/api/orders", get(order_handler::list_orders))
         .route("/api/orders/:order_id", get(order_handler::get_order))
+        // Mock invoice email (demo-safe)
+        .route(
+            "/api/orders/:order_id/send-invoice-email",
+            post(order_handler::send_invoice_email),
+        )
         // Delivery department endpoints (sales_manager role required)
         .route(
             "/api/delivery/orders",

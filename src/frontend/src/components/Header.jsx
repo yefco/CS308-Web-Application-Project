@@ -36,7 +36,9 @@ const Header = ({ isLoggedIn, onLogout }) => {
       return null;
     }
   })();
+  const isCustomer = userRole === 'customer' || userRole === 'Customer';
   const isProductManager = userRole === 'product_manager' || userRole === 'ProductManager';
+  const isSalesManager = userRole === 'sales_manager' || userRole === 'SalesManager';
 
   const handleMobileMenuOpen = (e) => setMobileMenuAnchor(e.currentTarget);
   const handleMobileMenuClose = () => setMobileMenuAnchor(null);
@@ -160,15 +162,30 @@ const Header = ({ isLoggedIn, onLogout }) => {
                       Product Manager
                     </MenuItem>
                   )}
-                  <MenuItem onClick={() => { navigate('/profile'); handleUserMenuClose(); }}>
-                    My Profile
-                  </MenuItem>
-                  <MenuItem onClick={() => { navigate('/order-tracking'); handleUserMenuClose(); }}>
-                    Track Orders
-                  </MenuItem>
-                  <MenuItem onClick={() => { navigate('/wishlist'); handleUserMenuClose(); }}>
-                    Wishlist
-                  </MenuItem>
+                  {isSalesManager && (
+                    <MenuItem
+                      onClick={() => { navigate('/delivery'); handleUserMenuClose(); }}
+                      sx={{ color: '#27ae60', fontWeight: 'bold' }}
+                    >
+                      <Dashboard sx={{ mr: 1, fontSize: '1.2rem' }} />
+                      Delivery Dashboard
+                    </MenuItem>
+                  )}
+                  {isCustomer && (
+                    <MenuItem onClick={() => { navigate('/profile'); handleUserMenuClose(); }}>
+                      My Profile
+                    </MenuItem>
+                  )}
+                  {isCustomer && (
+                    <MenuItem onClick={() => { navigate('/order-tracking'); handleUserMenuClose(); }}>
+                      Track Orders
+                    </MenuItem>
+                  )}
+                  {isCustomer && (
+                    <MenuItem onClick={() => { navigate('/wishlist'); handleUserMenuClose(); }}>
+                      Wishlist
+                    </MenuItem>
+                  )}
                   <MenuItem divider />
                   <MenuItem onClick={handleLogout} sx={{ color: '#e74c3c' }}>
                     <LogoutIcon sx={{ mr: 1, fontSize: '1.2rem' }} />
