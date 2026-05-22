@@ -10,12 +10,7 @@
 //! Handlers should contain zero business logic — they are the
 //! thin HTTP boundary of the application.
 
-use axum::{
-    extract::State,
-    http::StatusCode,
-    response::IntoResponse,
-    Json,
-};
+use axum::{extract::State, http::StatusCode, response::IntoResponse, Json};
 
 use crate::models::user::{LoginRequest, SignUpRequest};
 use crate::utils::errors::AppError;

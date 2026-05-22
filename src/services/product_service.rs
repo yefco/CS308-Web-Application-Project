@@ -1,9 +1,8 @@
 use sqlx::PgPool;
 
 use crate::models::product::{
-    CategoriesResponse, Category, CreateCategoryRequest, CreateProductRequest,
-    ProductResponse, ProductsResponse, UpdateCategoryRequest, UpdateProductRequest,
-    UpdateStockRequest,
+    CategoriesResponse, Category, CreateCategoryRequest, CreateProductRequest, ProductResponse,
+    ProductsResponse, UpdateCategoryRequest, UpdateProductRequest, UpdateStockRequest,
 };
 use crate::repository::product_repository;
 use crate::utils::errors::AppError;
@@ -99,7 +98,9 @@ impl ProductService {
         }
         let stock = req.stock_quantity.unwrap_or(0);
         if stock < 0 {
-            return Err(AppError::BadRequest("Stock quantity must be non-negative".into()));
+            return Err(AppError::BadRequest(
+                "Stock quantity must be non-negative".into(),
+            ));
         }
 
         product_repository::create_product(
@@ -155,7 +156,9 @@ impl ProductService {
         req: UpdateStockRequest,
     ) -> Result<ProductResponse, AppError> {
         if req.stock_quantity < 0 {
-            return Err(AppError::BadRequest("Stock quantity must be non-negative".into()));
+            return Err(AppError::BadRequest(
+                "Stock quantity must be non-negative".into(),
+            ));
         }
         product_repository::update_stock(&self.pool, product_id, req.stock_quantity)
             .await?

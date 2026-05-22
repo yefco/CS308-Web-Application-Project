@@ -38,19 +38,16 @@ impl AppConfig {
     /// which is intentional — fail fast rather than at runtime.
     pub fn from_env() -> Self {
         Self {
-            database_url: std::env::var("DATABASE_URL")
-                .expect("DATABASE_URL must be set"),
+            database_url: std::env::var("DATABASE_URL").expect("DATABASE_URL must be set"),
 
-            server_host: std::env::var("SERVER_HOST")
-                .unwrap_or_else(|_| "0.0.0.0".to_string()),
+            server_host: std::env::var("SERVER_HOST").unwrap_or_else(|_| "0.0.0.0".to_string()),
 
             server_port: std::env::var("SERVER_PORT")
                 .unwrap_or_else(|_| "3000".to_string())
                 .parse()
                 .expect("SERVER_PORT must be a valid u16"),
 
-            jwt_secret: std::env::var("JWT_SECRET")
-                .expect("JWT_SECRET must be set"),
+            jwt_secret: std::env::var("JWT_SECRET").expect("JWT_SECRET must be set"),
 
             jwt_expiration_hours: std::env::var("JWT_EXPIRATION_HOURS")
                 .unwrap_or_else(|_| "24".to_string())

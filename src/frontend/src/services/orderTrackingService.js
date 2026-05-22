@@ -48,6 +48,24 @@ export const getOrderById = async (orderId) => {
   return handleResponse(response);
 };
 
+export const cancelOrder = async (orderId) => {
+  const response = await fetch(`/api/orders/${orderId}/cancel`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+  });
+
+  return handleResponse(response);
+};
+
+export const returnOrder = async (orderId) => {
+  const response = await fetch(`/api/orders/${orderId}/return`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+  });
+
+  return handleResponse(response);
+};
+
 /**
  * Fetch delivery status for an order
  * @param {string} orderId - The ID of the order

@@ -5,11 +5,11 @@ use crate::utils::errors::AppError;
 
 /// Insert or update the user's review for a product (upsert).
 pub async fn upsert_review(
-    pool:       &PgPool,
+    pool: &PgPool,
     product_id: i32,
-    user_id:    i32,
-    rating:     i32,
-    comment:    Option<&str>,
+    user_id: i32,
+    rating: i32,
+    comment: Option<&str>,
 ) -> Result<(), AppError> {
     sqlx::query(
         r#"
@@ -36,7 +36,7 @@ pub async fn upsert_review(
 
 /// Fetch all APPROVED reviews for a product, joined with user names.
 pub async fn list_product_reviews(
-    pool:       &PgPool,
+    pool: &PgPool,
     product_id: i32,
 ) -> Result<Vec<ReviewRow>, AppError> {
     sqlx::query_as::<_, ReviewRow>(
@@ -64,11 +64,14 @@ pub async fn list_product_reviews(
 /// Fetch aggregate stats (avg rating, total count) for a product — includes pending + approved,
 /// excludes rejected. Used so ratings show immediately without waiting for approval.
 pub async fn get_product_rating_stats(
-    pool:       &PgPool,
+    pool: &PgPool,
     product_id: i32,
 ) -> Result<(f64, i64), AppError> {
     #[derive(sqlx::FromRow)]
-    struct Stats { avg_rating: Option<f64>, total: Option<i64> }
+    struct Stats {
+        avg_rating: Option<f64>,
+        total: Option<i64>,
+    }
 
     let row = sqlx::query_as::<_, Stats>(
         r#"
@@ -114,9 +117,9 @@ pub async fn list_pending_reviews(pool: &PgPool) -> Result<Vec<PendingReviewRow>
 
 /// Update a review's status to 'approved' or 'rejected'.
 pub async fn update_review_status(
-    pool:      &PgPool,
+    pool: &PgPool,
     review_id: i32,
-    status:    &str,
+    status: &str,
 ) -> Result<(), AppError> {
     let rows_affected = sqlx::query(
         r#"
@@ -133,16 +136,19 @@ pub async fn update_review_status(
     .rows_affected();
 
     if rows_affected == 0 {
-        return Err(AppError::NotFound(format!("Review {} not found", review_id)));
+        return Err(AppError::NotFound(format!(
+            "Review {} not found",
+            review_id
+        )));
     }
     Ok(())
 }
 
 /// Fetch the authenticated user's own review for a product, if any.
 pub async fn get_user_review(
-    pool:       &PgPool,
+    pool: &PgPool,
     product_id: i32,
-    user_id:    i32,
+    user_id: i32,
 ) -> Result<Option<UserReviewResponse>, AppError> {
     sqlx::query_as::<_, UserReviewResponse>(
         r#"

@@ -242,6 +242,25 @@ pub async fn decrement_stock_in_tx(
     .await
 }
 
+pub async fn increment_stock_in_tx(
+    tx: &mut Transaction<'_, Postgres>,
+    product_id: i32,
+    quantity: i32,
+) -> Result<(), sqlx::Error> {
+    sqlx::query(
+        r#"
+        UPDATE products
+        SET stock_quantity = stock_quantity + $2
+        WHERE product_id = $1
+        "#,
+    )
+    .bind(product_id)
+    .bind(quantity)
+    .execute(&mut **tx)
+    .await
+    .map(|_| ())
+}
+
 pub async fn delete_product(pool: &PgPool, product_id: i32) -> Result<bool, sqlx::Error> {
     sqlx::query("DELETE FROM products WHERE product_id = $1")
         .bind(product_id)

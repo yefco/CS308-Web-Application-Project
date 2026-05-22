@@ -15,7 +15,9 @@ fn extract_owner(headers: &HeaderMap, state: &AppState) -> Result<CartOwner, App
         if let Ok(s) = val.to_str() {
             if let Some(token) = s.strip_prefix("Bearer ") {
                 let claims = decode_jwt(token, &state.jwt_secret)?;
-                let user_id = claims.sub.parse::<i32>()
+                let user_id = claims
+                    .sub
+                    .parse::<i32>()
                     .map_err(|_| AppError::Unauthorized("Invalid token subject".into()))?;
                 return Ok(CartOwner::User(user_id));
             }
@@ -26,7 +28,9 @@ fn extract_owner(headers: &HeaderMap, state: &AppState) -> Result<CartOwner, App
             return Ok(CartOwner::Guest(s.to_string()));
         }
     }
-    Err(AppError::Unauthorized("Provide Authorization header or X-Session-ID".into()))
+    Err(AppError::Unauthorized(
+        "Provide Authorization header or X-Session-ID".into(),
+    ))
 }
 
 pub async fn get_cart(
@@ -55,7 +59,10 @@ pub async fn update_quantity(
     Json(payload): Json<UpdateQuantityRequest>,
 ) -> Result<impl IntoResponse, AppError> {
     let owner = extract_owner(&headers, &state)?;
-    let cart = state.cart_service.update_quantity(owner, product_id, payload).await?;
+    let cart = state
+        .cart_service
+        .update_quantity(owner, product_id, payload)
+        .await?;
     Ok(Json(cart))
 }
 
@@ -85,7 +92,9 @@ pub async fn merge_cart(
 ) -> Result<impl IntoResponse, AppError> {
     let owner = extract_owner(&headers, &state)?;
     let CartOwner::User(user_id) = owner else {
-        return Err(AppError::Unauthorized("Authentication required to merge cart".into()));
+        return Err(AppError::Unauthorized(
+            "Authentication required to merge cart".into(),
+        ));
     };
     let cart = state.cart_service.merge(user_id, payload).await?;
     Ok(Json(cart))
