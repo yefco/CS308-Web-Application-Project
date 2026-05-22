@@ -20,6 +20,10 @@ pub fn routes() -> Router<AppState> {
             "/api/orders/:order_id/return",
             post(order_handler::return_order),
         )
+        .route(
+            "/api/orders/:order_id/items/:item_id/return-request",
+            post(order_handler::request_item_return),
+        )
         // Mock invoice email (demo-safe)
         .route(
             "/api/orders/:order_id/send-invoice-email",

@@ -11,6 +11,7 @@ import ProductManagerPage from './pages/ProductManagerPage';
 import CommentApprovalPage from './pages/CommentApprovalPage';
 import OrderTrackingPage from './pages/OrderTrackingPage';
 import DeliveryPage from './pages/DeliveryPage';
+import SalesManagerPage from './pages/SalesManagerPage';
 import WishlistPage from './pages/WishlistPage';
 import ProfilePage from './pages/ProfilePage';
 import { CartProvider, useCart } from './context/CartContext';
@@ -83,6 +84,7 @@ function AppContent() {
           <Route path="/wishlist" element={<WishlistPage isLoggedIn={isLoggedIn} />} />
           <Route path="/product-manager/comment-approval" element={<CommentApprovalPage />} />
           <Route path="/delivery" element={<DeliveryPage />} />
+          <Route path="/sales-manager" element={<SalesManagerPage />} />
         </Routes>
       </Box>
     </Box>
