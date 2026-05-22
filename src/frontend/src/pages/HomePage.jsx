@@ -77,19 +77,26 @@ const HomePage = ({ isLoggedIn }) => {
 
         setApiCategories(rawCategories);
 
-        const mapped = rawProducts.map(p => ({
-          id: p.product_id,
-          name: p.product_name,
-          category: rawCategories.find(c => c.category_id === p.category_id)?.category_name ?? '',
-          price: parseFloat(p.price),
-          originalPrice: parseFloat(p.price),
-          image: PRODUCT_IMAGES[p.product_name] || null,
-          rating: 0,
-          reviews: 0,
-          stock: p.stock_quantity,
-          discount: 0,
-          description: p.description ?? '',
-        }));
+        const mapped = rawProducts.map(p => {
+          const discountPct = parseFloat(p.discount_percent ?? 0);
+          const originalPrice = parseFloat(p.price);
+          const effectivePrice = p.discounted_price != null
+            ? parseFloat(p.discounted_price)
+            : originalPrice * (1 - discountPct / 100);
+          return {
+            id: p.product_id,
+            name: p.product_name,
+            category: rawCategories.find(c => c.category_id === p.category_id)?.category_name ?? '',
+            price: effectivePrice,
+            originalPrice,
+            image: PRODUCT_IMAGES[p.product_name] || null,
+            rating: 0,
+            reviews: 0,
+            stock: p.stock_quantity,
+            discount: discountPct,
+            description: p.description ?? '',
+          };
+        });
 
         const withReviews = await fetchReviewsForProducts(mapped);
         setProducts(withReviews);
@@ -388,10 +395,15 @@ const HomePage = ({ isLoggedIn }) => {
                         ({product.reviews})
                       </Typography>
                     </Box>
-                    <Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
-                      <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#27ae60' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1, flexWrap: 'wrap' }}>
+                      <Typography variant="h6" sx={{ fontWeight: 'bold', color: product.discount > 0 ? '#e74c3c' : '#27ae60' }}>
                         ${product.price.toFixed(2)}
                       </Typography>
+                      {product.discount > 0 && (
+                        <Typography variant="body2" sx={{ textDecoration: 'line-through', color: '#95a5a6' }}>
+                          ${product.originalPrice.toFixed(2)}
+                        </Typography>
+                      )}
                     </Box>
                     <Typography variant="body2" color={product.stock > 5 ? '#27ae60' : '#e74c3c'}>
                       {product.stock > 0 ? `${product.stock} in stock` : 'Out of stock'}

@@ -24,6 +24,7 @@ mod utils;
 use std::net::SocketAddr;
 
 use axum::Router;
+use sqlx::PgPool;
 use tokio::net::TcpListener;
 use tower_http::cors::{Any, CorsLayer};
 use tower_http::trace::TraceLayer;
@@ -31,8 +32,8 @@ use tower_http::trace::TraceLayer;
 use crate::config::app_config::AppConfig;
 use crate::database::db;
 use crate::routes::{
-    auth_routes, cart_routes, order_routes, payment_routes, product_routes, review_routes,
-    wishlist_routes,
+    auth_routes, cart_routes, notification_routes, order_routes, payment_routes, product_routes,
+    review_routes, sales_routes, wishlist_routes,
 };
 use crate::services::auth_service::AuthService;
 use crate::services::cart_service::CartService;
@@ -52,6 +53,7 @@ use crate::services::wishlist_service::WishlistService;
 /// which is an `Arc` internally) or wrapped in `Arc`.
 #[derive(Clone)]
 pub struct AppState {
+    pub pool: PgPool,
     pub auth_service: AuthService,
     pub cart_service: CartService,
     pub order_service: OrderService,
@@ -98,6 +100,7 @@ async fn main() {
     let wishlist_service = WishlistService::new(pool.clone());
 
     let state = AppState {
+        pool: pool.clone(),
         auth_service,
         cart_service,
         order_service,
@@ -119,10 +122,12 @@ async fn main() {
     let app = Router::new()
         .merge(auth_routes::routes())
         .merge(cart_routes::routes())
+        .merge(notification_routes::routes())
         .merge(order_routes::routes())
         .merge(payment_routes::routes())
         .merge(product_routes::routes())
         .merge(review_routes::routes())
+        .merge(sales_routes::routes())
         .merge(wishlist_routes::routes())
         .layer(cors)
         .layer(TraceLayer::new_for_http())

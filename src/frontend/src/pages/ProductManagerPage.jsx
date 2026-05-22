@@ -35,6 +35,7 @@ import {
   Delete,
   Inventory,
   Category,
+  LocalShipping,
   Refresh,
   RateReview,
 } from '@mui/icons-material';
@@ -565,6 +566,113 @@ function CategoriesTab({ categories, onCategoriesChange, onSnack }) {
   );
 }
 
+// ─── Deliveries Tab ───────────────────────────────────────────────────────────
+const STATUS_OPTIONS_PM = [
+  { value: 'processing', label: 'Processing' },
+  { value: 'in_transit', label: 'In Transit' },
+  { value: 'delivered', label: 'Delivered' },
+];
+const STATUS_COLOR_PM = { processing: 'warning', in_transit: 'info', delivered: 'success', cancelled: 'default', returned: 'secondary' };
+
+function DeliveriesTab({ onSnack }) {
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [updatingId, setUpdatingId] = useState(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/delivery/orders`, { headers: authHeaders() });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).message || 'Failed');
+      const data = await res.json();
+      setOrders(Array.isArray(data) ? data : (data.orders ?? []));
+    } catch (e) {
+      onSnack(e.message || 'Failed to load orders', 'error');
+    } finally {
+      setLoading(false);
+    }
+  }, [onSnack]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const updateStatus = async (orderId, status) => {
+    setUpdatingId(orderId);
+    try {
+      const res = await fetch(`${API_BASE}/delivery/orders/${orderId}/status`, {
+        method: 'PUT',
+        headers: authHeaders(),
+        body: JSON.stringify({ status }),
+      });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).message || 'Update failed');
+      onSnack(`Order #${orderId} updated to ${status}`, 'success');
+      load();
+    } catch (e) {
+      onSnack(e.message || 'Update failed', 'error');
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
+  if (loading) return <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}><CircularProgress /></Box>;
+
+  return (
+    <>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+        <Typography variant="h6" sx={{ fontWeight: 'bold' }}>All Orders</Typography>
+        <Button startIcon={<Refresh />} onClick={load} variant="outlined" size="small">Refresh</Button>
+      </Box>
+      <TableContainer component={Paper} elevation={2}>
+        <Table size="small">
+          <TableHead sx={{ bgcolor: '#2c3e50' }}>
+            <TableRow>
+              {['Order ID', 'Status', 'Date', 'Address', 'Total', 'Update Status'].map(h => (
+                <TableCell key={h} sx={{ color: '#fff', fontWeight: 'bold' }}>{h}</TableCell>
+              ))}
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {orders.length === 0 ? (
+              <TableRow><TableCell colSpan={6} align="center" sx={{ py: 4, color: '#7f8c8d' }}>No orders found</TableCell></TableRow>
+            ) : orders.map(o => {
+              const norm = (o.status || 'processing').toLowerCase().replace('-', '_');
+              const isTerminal = norm === 'cancelled' || norm === 'returned';
+              return (
+                <TableRow key={o.order_id} hover>
+                  <TableCell>#{o.order_id}</TableCell>
+                  <TableCell>
+                    <Chip label={o.status} color={STATUS_COLOR_PM[norm] || 'default'} size="small" />
+                  </TableCell>
+                  <TableCell>{new Date(o.created_at).toLocaleDateString()}</TableCell>
+                  <TableCell sx={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {o.delivery_address}
+                  </TableCell>
+                  <TableCell sx={{ fontWeight: 700 }}>${parseFloat(o.total_amount).toFixed(2)}</TableCell>
+                  <TableCell>
+                    {isTerminal ? (
+                      <Chip label={o.status} size="small" color="default" />
+                    ) : (
+                      <TextField
+                        select size="small" value={norm}
+                        disabled={updatingId === o.order_id}
+                        onChange={e => updateStatus(o.order_id, e.target.value)}
+                        sx={{ minWidth: 130 }}
+                      >
+                        {STATUS_OPTIONS_PM.map(opt => (
+                          <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>
+                        ))}
+                      </TextField>
+                    )}
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </TableContainer>
+    </>
+  );
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 const ProductManagerPage = () => {
   const navigate = useNavigate();
@@ -626,6 +734,7 @@ const ProductManagerPage = () => {
           <Tab icon={<Inventory />} iconPosition="start" label="Products" />
           <Tab icon={<Category />} iconPosition="start" label="Categories" />
           <Tab icon={<RateReview />} iconPosition="start" label="Comment Approval" />
+          <Tab icon={<LocalShipping />} iconPosition="start" label="Deliveries" />
         </Tabs>
       </Paper>
 
@@ -641,6 +750,7 @@ const ProductManagerPage = () => {
         />
       )}
       {tab === 2 && <CommentApprovalPage />}
+      {tab === 3 && <DeliveriesTab onSnack={showSnack} />}
 
       {/* Snackbar */}
       <Snackbar

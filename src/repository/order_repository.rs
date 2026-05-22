@@ -187,6 +187,27 @@ pub async fn list_all_orders(pool: &PgPool) -> Result<Vec<Order>, sqlx::Error> {
     .await
 }
 
+pub async fn list_orders_in_date_range(
+    pool: &PgPool,
+    from: &str,
+    to: &str,
+) -> Result<Vec<Order>, sqlx::Error> {
+    sqlx::query_as::<_, Order>(
+        r#"
+        SELECT order_id, user_id, status, delivery_address,
+               total_amount::FLOAT8 AS total_amount, created_at, updated_at
+        FROM orders
+        WHERE created_at::DATE >= $1::DATE
+          AND created_at::DATE <= $2::DATE
+        ORDER BY created_at DESC, order_id DESC
+        "#,
+    )
+    .bind(from)
+    .bind(to)
+    .fetch_all(pool)
+    .await
+}
+
 pub async fn has_purchased_product(
     pool: &PgPool,
     user_id: i32,

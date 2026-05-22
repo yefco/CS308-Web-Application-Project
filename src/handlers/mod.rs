@@ -1,7 +1,10 @@
 pub mod auth_handler;
 pub mod cart_handler;
+pub mod notification_handler;
 pub mod order_handler;
 pub mod payment_handler;
 pub mod product_handler;
 pub mod review_handler;
+pub mod sales_handler;
+pub mod user_handler;
 pub mod wishlist_handler;
