@@ -14,7 +14,6 @@ import DeliveryPage from './pages/DeliveryPage';
 import SalesManagerPage from './pages/SalesManagerPage';
 import WishlistPage from './pages/WishlistPage';
 import ProfilePage from './pages/ProfilePage';
-import SalesManagerPage from './pages/SalesManagerPage';
 import { CartProvider, useCart } from './context/CartContext';
 import './App.css';
 

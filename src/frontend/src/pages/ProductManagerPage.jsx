@@ -38,6 +38,7 @@ import {
   LocalShipping,
   Refresh,
   RateReview,
+  Receipt,
 } from '@mui/icons-material';
 import CommentApprovalPage from './CommentApprovalPage';
 
@@ -133,26 +134,32 @@ function ProductsTab({ categories, onSnack }) {
 
   const handleSave = async () => {
     setSaving(true);
+
     const body = {
       ...form,
       category_id: Number(form.category_id),
       stock_quantity: Number(form.stock_quantity),
       price: parseFloat(form.price),
     };
+
     try {
       const url = editingProduct
         ? `${API_BASE}/products/${editingProduct.product_id}`
         : `${API_BASE}/products`;
+
       const method = editingProduct ? 'PUT' : 'POST';
+
       const res = await fetch(url, {
         method,
         headers: authHeaders(),
         body: JSON.stringify(body),
       });
+
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         throw new Error(err.message || res.statusText);
       }
+
       onSnack(editingProduct ? 'Product updated' : 'Product created', 'success');
       setDialogOpen(false);
       fetchProducts();
@@ -165,6 +172,7 @@ function ProductsTab({ categories, onSnack }) {
 
   const handleStockUpdate = async () => {
     setSaving(true);
+
     try {
       const res = await fetch(
         `${API_BASE}/products/${targetProduct.product_id}/stock`,
@@ -174,7 +182,11 @@ function ProductsTab({ categories, onSnack }) {
           body: JSON.stringify({ stock_quantity: Number(stockValue) }),
         },
       );
-      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).message);
+
+      if (!res.ok) {
+        throw new Error((await res.json().catch(() => ({}))).message);
+      }
+
       onSnack('Stock updated', 'success');
       setStockDialogOpen(false);
       fetchProducts();
@@ -187,12 +199,17 @@ function ProductsTab({ categories, onSnack }) {
 
   const handleDelete = async () => {
     setSaving(true);
+
     try {
       const res = await fetch(
         `${API_BASE}/products/${targetProduct.product_id}`,
         { method: 'DELETE', headers: authHeaders() },
       );
-      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).message);
+
+      if (!res.ok) {
+        throw new Error((await res.json().catch(() => ({}))).message);
+      }
+
       onSnack('Product deleted', 'success');
       setDeleteDialogOpen(false);
       fetchProducts();
@@ -208,16 +225,35 @@ function ProductsTab({ categories, onSnack }) {
 
   return (
     <>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2, flexWrap: 'wrap', gap: 1 }}>
+      <Box
+        sx={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          mb: 2,
+          flexWrap: 'wrap',
+          gap: 1,
+        }}
+      >
         <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
           Products
         </Typography>
+
         <Box sx={{ display: 'flex', gap: 1 }}>
-          <Button startIcon={<Refresh />} onClick={fetchProducts} variant="outlined" size="small">
+          <Button
+            startIcon={<Refresh />}
+            onClick={fetchProducts}
+            variant="outlined"
+            size="small"
+          >
             Refresh
           </Button>
-          <Button startIcon={<Add />} onClick={openCreate} variant="contained"
-            sx={{ bgcolor: '#3498db', '&:hover': { bgcolor: '#2980b9' } }}>
+
+          <Button
+            startIcon={<Add />}
+            onClick={openCreate}
+            variant="contained"
+            sx={{ bgcolor: '#3498db', '&:hover': { bgcolor: '#2980b9' } }}
+          >
             Add Product
           </Button>
         </Box>
@@ -241,6 +277,7 @@ function ProductsTab({ categories, onSnack }) {
                 )}
               </TableRow>
             </TableHead>
+
             <TableBody>
               {products.length === 0 ? (
                 <TableRow>
@@ -256,13 +293,21 @@ function ProductsTab({ categories, onSnack }) {
                     <TableCell>{p.model}</TableCell>
                     <TableCell>{categoryName(p.category_id)}</TableCell>
                     <TableCell>${parseFloat(p.price).toFixed(2)}</TableCell>
+
                     <TableCell>
                       <Chip
                         label={p.stock_quantity}
-                        color={p.stock_quantity > 5 ? 'success' : p.stock_quantity > 0 ? 'warning' : 'error'}
+                        color={
+                          p.stock_quantity > 5
+                            ? 'success'
+                            : p.stock_quantity > 0
+                            ? 'warning'
+                            : 'error'
+                        }
                         size="small"
                       />
                     </TableCell>
+
                     <TableCell>
                       <Chip
                         label={p.warranty_status ? 'Yes' : 'No'}
@@ -271,19 +316,34 @@ function ProductsTab({ categories, onSnack }) {
                         variant="outlined"
                       />
                     </TableCell>
+
                     <TableCell>
                       <Tooltip title="Edit">
-                        <IconButton size="small" onClick={() => openEdit(p)} sx={{ color: '#3498db' }}>
+                        <IconButton
+                          size="small"
+                          onClick={() => openEdit(p)}
+                          sx={{ color: '#3498db' }}
+                        >
                           <Edit fontSize="small" />
                         </IconButton>
                       </Tooltip>
+
                       <Tooltip title="Update Stock">
-                        <IconButton size="small" onClick={() => openStock(p)} sx={{ color: '#27ae60' }}>
+                        <IconButton
+                          size="small"
+                          onClick={() => openStock(p)}
+                          sx={{ color: '#27ae60' }}
+                        >
                           <Inventory fontSize="small" />
                         </IconButton>
                       </Tooltip>
+
                       <Tooltip title="Delete">
-                        <IconButton size="small" onClick={() => openDelete(p)} sx={{ color: '#e74c3c' }}>
+                        <IconButton
+                          size="small"
+                          onClick={() => openDelete(p)}
+                          sx={{ color: '#e74c3c' }}
+                        >
                           <Delete fontSize="small" />
                         </IconButton>
                       </Tooltip>
@@ -301,6 +361,7 @@ function ProductsTab({ categories, onSnack }) {
         <DialogTitle sx={{ bgcolor: '#2c3e50', color: '#fff' }}>
           {editingProduct ? 'Edit Product' : 'New Product'}
         </DialogTitle>
+
         <DialogContent sx={{ pt: 2 }}>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
             <TextField
@@ -317,24 +378,67 @@ function ProductsTab({ categories, onSnack }) {
                 </MenuItem>
               ))}
             </TextField>
-            <TextField label="Product Name" value={form.product_name} required
-              onChange={(e) => setForm({ ...form, product_name: e.target.value })} fullWidth />
-            <TextField label="Model" value={form.model}
-              onChange={(e) => setForm({ ...form, model: e.target.value })} fullWidth />
-            <TextField label="Serial Number" value={form.serial_number} required
-              onChange={(e) => setForm({ ...form, serial_number: e.target.value })} fullWidth />
-            <TextField label="Description" value={form.description} multiline rows={3}
-              onChange={(e) => setForm({ ...form, description: e.target.value })} fullWidth />
+
+            <TextField
+              label="Product Name"
+              value={form.product_name}
+              required
+              onChange={(e) => setForm({ ...form, product_name: e.target.value })}
+              fullWidth
+            />
+
+            <TextField
+              label="Model"
+              value={form.model}
+              onChange={(e) => setForm({ ...form, model: e.target.value })}
+              fullWidth
+            />
+
+            <TextField
+              label="Serial Number"
+              value={form.serial_number}
+              required
+              onChange={(e) => setForm({ ...form, serial_number: e.target.value })}
+              fullWidth
+            />
+
+            <TextField
+              label="Description"
+              value={form.description}
+              multiline
+              rows={3}
+              onChange={(e) => setForm({ ...form, description: e.target.value })}
+              fullWidth
+            />
+
             <Box sx={{ display: 'flex', gap: 2 }}>
-              <TextField label="Price ($)" type="number" value={form.price} required
+              <TextField
+                label="Price ($)"
+                type="number"
+                value={form.price}
+                required
                 onChange={(e) => setForm({ ...form, price: e.target.value })}
-                inputProps={{ min: 0, step: '0.01' }} fullWidth />
-              <TextField label="Stock Qty" type="number" value={form.stock_quantity}
+                inputProps={{ min: 0, step: '0.01' }}
+                fullWidth
+              />
+
+              <TextField
+                label="Stock Qty"
+                type="number"
+                value={form.stock_quantity}
                 onChange={(e) => setForm({ ...form, stock_quantity: e.target.value })}
-                inputProps={{ min: 0 }} fullWidth />
+                inputProps={{ min: 0 }}
+                fullWidth
+              />
             </Box>
-            <TextField label="Distributor Info" value={form.distributor_info}
-              onChange={(e) => setForm({ ...form, distributor_info: e.target.value })} fullWidth />
+
+            <TextField
+              label="Distributor Info"
+              value={form.distributor_info}
+              onChange={(e) => setForm({ ...form, distributor_info: e.target.value })}
+              fullWidth
+            />
+
             <FormControlLabel
               control={
                 <Switch
@@ -347,22 +451,39 @@ function ProductsTab({ categories, onSnack }) {
             />
           </Box>
         </DialogContent>
+
         <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={() => setDialogOpen(false)} disabled={saving}>Cancel</Button>
-          <Button onClick={handleSave} variant="contained" disabled={saving}
-            sx={{ bgcolor: '#3498db', '&:hover': { bgcolor: '#2980b9' } }}>
+          <Button onClick={() => setDialogOpen(false)} disabled={saving}>
+            Cancel
+          </Button>
+
+          <Button
+            onClick={handleSave}
+            variant="contained"
+            disabled={saving}
+            sx={{ bgcolor: '#3498db', '&:hover': { bgcolor: '#2980b9' } }}
+          >
             {saving ? 'Saving…' : 'Save'}
           </Button>
         </DialogActions>
       </Dialog>
 
       {/* Stock Dialog */}
-      <Dialog open={stockDialogOpen} onClose={() => setStockDialogOpen(false)} maxWidth="xs" fullWidth>
-        <DialogTitle sx={{ bgcolor: '#2c3e50', color: '#fff' }}>Update Stock</DialogTitle>
+      <Dialog
+        open={stockDialogOpen}
+        onClose={() => setStockDialogOpen(false)}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle sx={{ bgcolor: '#2c3e50', color: '#fff' }}>
+          Update Stock
+        </DialogTitle>
+
         <DialogContent sx={{ pt: 2 }}>
           <Typography variant="body2" sx={{ mb: 2 }}>
             {targetProduct?.product_name}
           </Typography>
+
           <TextField
             fullWidth
             label="New Stock Quantity"
@@ -372,25 +493,43 @@ function ProductsTab({ categories, onSnack }) {
             inputProps={{ min: 0 }}
           />
         </DialogContent>
+
         <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={() => setStockDialogOpen(false)} disabled={saving}>Cancel</Button>
-          <Button onClick={handleStockUpdate} variant="contained" disabled={saving}
-            sx={{ bgcolor: '#27ae60', '&:hover': { bgcolor: '#219a52' } }}>
+          <Button onClick={() => setStockDialogOpen(false)} disabled={saving}>
+            Cancel
+          </Button>
+
+          <Button
+            onClick={handleStockUpdate}
+            variant="contained"
+            disabled={saving}
+            sx={{ bgcolor: '#27ae60', '&:hover': { bgcolor: '#219a52' } }}
+          >
             {saving ? 'Updating…' : 'Update'}
           </Button>
         </DialogActions>
       </Dialog>
 
       {/* Delete Confirm Dialog */}
-      <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)} maxWidth="xs" fullWidth>
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={() => setDeleteDialogOpen(false)}
+        maxWidth="xs"
+        fullWidth
+      >
         <DialogTitle>Confirm Delete</DialogTitle>
+
         <DialogContent>
           <Typography>
             Delete <strong>{targetProduct?.product_name}</strong>? This cannot be undone.
           </Typography>
         </DialogContent>
+
         <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={() => setDeleteDialogOpen(false)} disabled={saving}>Cancel</Button>
+          <Button onClick={() => setDeleteDialogOpen(false)} disabled={saving}>
+            Cancel
+          </Button>
+
           <Button onClick={handleDelete} variant="contained" color="error" disabled={saving}>
             {saving ? 'Deleting…' : 'Delete'}
           </Button>
@@ -417,7 +556,10 @@ function CategoriesTab({ categories, onCategoriesChange, onSnack }) {
 
   const openEdit = (cat) => {
     setEditingCategory(cat);
-    setForm({ category_name: cat.category_name ?? '', description: cat.description ?? '' });
+    setForm({
+      category_name: cat.category_name ?? '',
+      description: cat.description ?? '',
+    });
     setDialogOpen(true);
   };
 
@@ -428,20 +570,25 @@ function CategoriesTab({ categories, onCategoriesChange, onSnack }) {
 
   const handleSave = async () => {
     setSaving(true);
+
     try {
       const url = editingCategory
         ? `${API_BASE}/categories/${editingCategory.category_id}`
         : `${API_BASE}/categories`;
+
       const method = editingCategory ? 'PUT' : 'POST';
+
       const res = await fetch(url, {
         method,
         headers: authHeaders(),
         body: JSON.stringify(form),
       });
+
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         throw new Error(err.message || res.statusText);
       }
+
       onSnack(editingCategory ? 'Category updated' : 'Category created', 'success');
       setDialogOpen(false);
       onCategoriesChange();
@@ -454,12 +601,17 @@ function CategoriesTab({ categories, onCategoriesChange, onSnack }) {
 
   const handleDelete = async () => {
     setSaving(true);
+
     try {
       const res = await fetch(
         `${API_BASE}/categories/${targetCategory.category_id}`,
         { method: 'DELETE', headers: authHeaders() },
       );
-      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).message);
+
+      if (!res.ok) {
+        throw new Error((await res.json().catch(() => ({}))).message);
+      }
+
       onSnack('Category deleted', 'success');
       setDeleteDialogOpen(false);
       onCategoriesChange();
@@ -472,12 +624,25 @@ function CategoriesTab({ categories, onCategoriesChange, onSnack }) {
 
   return (
     <>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2, flexWrap: 'wrap', gap: 1 }}>
+      <Box
+        sx={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          mb: 2,
+          flexWrap: 'wrap',
+          gap: 1,
+        }}
+      >
         <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
           Categories
         </Typography>
-        <Button startIcon={<Add />} onClick={openCreate} variant="contained"
-          sx={{ bgcolor: '#3498db', '&:hover': { bgcolor: '#2980b9' } }}>
+
+        <Button
+          startIcon={<Add />}
+          onClick={openCreate}
+          variant="contained"
+          sx={{ bgcolor: '#3498db', '&:hover': { bgcolor: '#2980b9' } }}
+        >
           Add Category
         </Button>
       </Box>
@@ -493,6 +658,7 @@ function CategoriesTab({ categories, onCategoriesChange, onSnack }) {
               ))}
             </TableRow>
           </TableHead>
+
           <TableBody>
             {categories.length === 0 ? (
               <TableRow>
@@ -506,14 +672,24 @@ function CategoriesTab({ categories, onCategoriesChange, onSnack }) {
                   <TableCell>{c.category_id}</TableCell>
                   <TableCell sx={{ fontWeight: 500 }}>{c.category_name}</TableCell>
                   <TableCell sx={{ color: '#7f8c8d' }}>{c.description || '—'}</TableCell>
+
                   <TableCell>
                     <Tooltip title="Edit">
-                      <IconButton size="small" onClick={() => openEdit(c)} sx={{ color: '#3498db' }}>
+                      <IconButton
+                        size="small"
+                        onClick={() => openEdit(c)}
+                        sx={{ color: '#3498db' }}
+                      >
                         <Edit fontSize="small" />
                       </IconButton>
                     </Tooltip>
+
                     <Tooltip title="Delete">
-                      <IconButton size="small" onClick={() => openDelete(c)} sx={{ color: '#e74c3c' }}>
+                      <IconButton
+                        size="small"
+                        onClick={() => openDelete(c)}
+                        sx={{ color: '#e74c3c' }}
+                      >
                         <Delete fontSize="small" />
                       </IconButton>
                     </Tooltip>
@@ -530,33 +706,64 @@ function CategoriesTab({ categories, onCategoriesChange, onSnack }) {
         <DialogTitle sx={{ bgcolor: '#2c3e50', color: '#fff' }}>
           {editingCategory ? 'Edit Category' : 'New Category'}
         </DialogTitle>
+
         <DialogContent sx={{ pt: 2 }}>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
-            <TextField label="Category Name" value={form.category_name} required
-              onChange={(e) => setForm({ ...form, category_name: e.target.value })} fullWidth />
-            <TextField label="Description" value={form.description} multiline rows={3}
-              onChange={(e) => setForm({ ...form, description: e.target.value })} fullWidth />
+            <TextField
+              label="Category Name"
+              value={form.category_name}
+              required
+              onChange={(e) => setForm({ ...form, category_name: e.target.value })}
+              fullWidth
+            />
+
+            <TextField
+              label="Description"
+              value={form.description}
+              multiline
+              rows={3}
+              onChange={(e) => setForm({ ...form, description: e.target.value })}
+              fullWidth
+            />
           </Box>
         </DialogContent>
+
         <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={() => setDialogOpen(false)} disabled={saving}>Cancel</Button>
-          <Button onClick={handleSave} variant="contained" disabled={saving}
-            sx={{ bgcolor: '#3498db', '&:hover': { bgcolor: '#2980b9' } }}>
+          <Button onClick={() => setDialogOpen(false)} disabled={saving}>
+            Cancel
+          </Button>
+
+          <Button
+            onClick={handleSave}
+            variant="contained"
+            disabled={saving}
+            sx={{ bgcolor: '#3498db', '&:hover': { bgcolor: '#2980b9' } }}
+          >
             {saving ? 'Saving…' : 'Save'}
           </Button>
         </DialogActions>
       </Dialog>
 
       {/* Delete Confirm Dialog */}
-      <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)} maxWidth="xs" fullWidth>
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={() => setDeleteDialogOpen(false)}
+        maxWidth="xs"
+        fullWidth
+      >
         <DialogTitle>Confirm Delete</DialogTitle>
+
         <DialogContent>
           <Typography>
             Delete category <strong>{targetCategory?.category_name}</strong>? This cannot be undone.
           </Typography>
         </DialogContent>
+
         <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={() => setDeleteDialogOpen(false)} disabled={saving}>Cancel</Button>
+          <Button onClick={() => setDeleteDialogOpen(false)} disabled={saving}>
+            Cancel
+          </Button>
+
           <Button onClick={handleDelete} variant="contained" color="error" disabled={saving}>
             {saving ? 'Deleting…' : 'Delete'}
           </Button>
@@ -572,7 +779,14 @@ const STATUS_OPTIONS_PM = [
   { value: 'in_transit', label: 'In Transit' },
   { value: 'delivered', label: 'Delivered' },
 ];
-const STATUS_COLOR_PM = { processing: 'warning', in_transit: 'info', delivered: 'success', cancelled: 'default', returned: 'secondary' };
+
+const STATUS_COLOR_PM = {
+  processing: 'warning',
+  in_transit: 'info',
+  delivered: 'success',
+  cancelled: 'default',
+  returned: 'secondary',
+};
 
 function DeliveriesTab({ onSnack }) {
   const [orders, setOrders] = useState([]);
@@ -581,11 +795,20 @@ function DeliveriesTab({ onSnack }) {
 
   const load = useCallback(async () => {
     setLoading(true);
+
     try {
-      const res = await fetch(`${API_BASE}/delivery/orders`, { headers: authHeaders() });
-      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).message || 'Failed');
+      const res = await fetch(`${API_BASE}/delivery/orders`, {
+        headers: authHeaders(),
+      });
+
+      if (!res.ok) {
+        throw new Error(
+          (await res.json().catch(() => ({}))).message || 'Failed'
+        );
+      }
+
       const data = await res.json();
-      setOrders(Array.isArray(data) ? data : (data.orders ?? []));
+      setOrders(Array.isArray(data) ? data : data.orders ?? []);
     } catch (e) {
       onSnack(e.message || 'Failed to load orders', 'error');
     } finally {
@@ -593,17 +816,26 @@ function DeliveriesTab({ onSnack }) {
     }
   }, [onSnack]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+  }, [load]);
 
   const updateStatus = async (orderId, status) => {
     setUpdatingId(orderId);
+
     try {
       const res = await fetch(`${API_BASE}/delivery/orders/${orderId}/status`, {
         method: 'PUT',
         headers: authHeaders(),
         body: JSON.stringify({ status }),
       });
-      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).message || 'Update failed');
+
+      if (!res.ok) {
+        throw new Error(
+          (await res.json().catch(() => ({}))).message || 'Update failed'
+        );
+      }
+
       onSnack(`Order #${orderId} updated to ${status}`, 'success');
       load();
     } catch (e) {
@@ -613,59 +845,246 @@ function DeliveriesTab({ onSnack }) {
     }
   };
 
-  if (loading) return <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}><CircularProgress /></Box>;
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
 
   return (
     <>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-        <Typography variant="h6" sx={{ fontWeight: 'bold' }}>All Orders</Typography>
-        <Button startIcon={<Refresh />} onClick={load} variant="outlined" size="small">Refresh</Button>
+        <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+          All Orders
+        </Typography>
+
+        <Button startIcon={<Refresh />} onClick={load} variant="outlined" size="small">
+          Refresh
+        </Button>
       </Box>
+
       <TableContainer component={Paper} elevation={2}>
         <Table size="small">
           <TableHead sx={{ bgcolor: '#2c3e50' }}>
             <TableRow>
-              {['Order ID', 'Status', 'Date', 'Address', 'Total', 'Update Status'].map(h => (
-                <TableCell key={h} sx={{ color: '#fff', fontWeight: 'bold' }}>{h}</TableCell>
+              {['Order ID', 'Status', 'Date', 'Address', 'Total', 'Update Status'].map((h) => (
+                <TableCell key={h} sx={{ color: '#fff', fontWeight: 'bold' }}>
+                  {h}
+                </TableCell>
               ))}
             </TableRow>
           </TableHead>
+
           <TableBody>
             {orders.length === 0 ? (
-              <TableRow><TableCell colSpan={6} align="center" sx={{ py: 4, color: '#7f8c8d' }}>No orders found</TableCell></TableRow>
-            ) : orders.map(o => {
-              const norm = (o.status || 'processing').toLowerCase().replace('-', '_');
-              const isTerminal = norm === 'cancelled' || norm === 'returned';
-              return (
-                <TableRow key={o.order_id} hover>
-                  <TableCell>#{o.order_id}</TableCell>
-                  <TableCell>
-                    <Chip label={o.status} color={STATUS_COLOR_PM[norm] || 'default'} size="small" />
+              <TableRow>
+                <TableCell colSpan={6} align="center" sx={{ py: 4, color: '#7f8c8d' }}>
+                  No orders found
+                </TableCell>
+              </TableRow>
+            ) : (
+              orders.map((o) => {
+                const norm = (o.status || 'processing').toLowerCase().replace('-', '_');
+                const isTerminal = norm === 'cancelled' || norm === 'returned';
+
+                return (
+                  <TableRow key={o.order_id} hover>
+                    <TableCell>#{o.order_id}</TableCell>
+
+                    <TableCell>
+                      <Chip
+                        label={o.status}
+                        color={STATUS_COLOR_PM[norm] || 'default'}
+                        size="small"
+                      />
+                    </TableCell>
+
+                    <TableCell>
+                      {o.created_at ? new Date(o.created_at).toLocaleDateString() : '—'}
+                    </TableCell>
+
+                    <TableCell
+                      sx={{
+                        maxWidth: 200,
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {o.delivery_address}
+                    </TableCell>
+
+                    <TableCell sx={{ fontWeight: 700 }}>
+                      ${parseFloat(o.total_amount || 0).toFixed(2)}
+                    </TableCell>
+
+                    <TableCell>
+                      {isTerminal ? (
+                        <Chip label={o.status} size="small" color="default" />
+                      ) : (
+                        <TextField
+                          select
+                          size="small"
+                          value={norm}
+                          disabled={updatingId === o.order_id}
+                          onChange={(e) => updateStatus(o.order_id, e.target.value)}
+                          sx={{ minWidth: 130 }}
+                        >
+                          {STATUS_OPTIONS_PM.map((opt) => (
+                            <MenuItem key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </MenuItem>
+                          ))}
+                        </TextField>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                );
+              })
+            )}
+          </TableBody>
+        </Table>
+      </TableContainer>
+    </>
+  );
+}
+
+// ─── Invoices Tab ─────────────────────────────────────────────────────────────
+function InvoicesTab({ onSnack }) {
+  const [invoices, setInvoices] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+
+    try {
+      const res = await fetch(`${API_BASE}/product-manager/invoices`, {
+        headers: authHeaders(),
+      });
+
+      if (!res.ok) {
+        throw new Error(
+          (await res.json().catch(() => ({}))).message || 'Failed to load invoices'
+        );
+      }
+
+      const data = await res.json();
+      setInvoices(Array.isArray(data) ? data : data.orders ?? []);
+    } catch (e) {
+      onSnack(e.message || 'Failed to load invoices', 'error');
+    } finally {
+      setLoading(false);
+    }
+  }, [onSnack]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  return (
+    <>
+      <Box
+        sx={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          mb: 2,
+          flexWrap: 'wrap',
+          gap: 1,
+        }}
+      >
+        <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+          Invoices
+        </Typography>
+
+        <Button startIcon={<Refresh />} onClick={load} variant="outlined" size="small">
+          Refresh
+        </Button>
+      </Box>
+
+      <TableContainer component={Paper} elevation={2}>
+        <Table size="small">
+          <TableHead sx={{ bgcolor: '#2c3e50' }}>
+            <TableRow>
+              {['Invoice ID', 'Date', 'Delivery Address', 'Total Amount', 'Status', 'Items'].map(
+                (h) => (
+                  <TableCell key={h} sx={{ color: '#fff', fontWeight: 'bold' }}>
+                    {h}
                   </TableCell>
-                  <TableCell>{new Date(o.created_at).toLocaleDateString()}</TableCell>
-                  <TableCell sx={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {o.delivery_address}
-                  </TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>${parseFloat(o.total_amount).toFixed(2)}</TableCell>
-                  <TableCell>
-                    {isTerminal ? (
-                      <Chip label={o.status} size="small" color="default" />
-                    ) : (
-                      <TextField
-                        select size="small" value={norm}
-                        disabled={updatingId === o.order_id}
-                        onChange={e => updateStatus(o.order_id, e.target.value)}
-                        sx={{ minWidth: 130 }}
-                      >
-                        {STATUS_OPTIONS_PM.map(opt => (
-                          <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>
-                        ))}
-                      </TextField>
-                    )}
-                  </TableCell>
-                </TableRow>
-              );
-            })}
+                ),
+              )}
+            </TableRow>
+          </TableHead>
+
+          <TableBody>
+            {invoices.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={6} align="center" sx={{ py: 4, color: '#7f8c8d' }}>
+                  No invoices found
+                </TableCell>
+              </TableRow>
+            ) : (
+              invoices.map((invoice) => {
+                const status = invoice.status || 'unknown';
+                const normalizedStatus = status.toLowerCase().replace('-', '_');
+
+                return (
+                  <TableRow key={invoice.order_id} hover>
+                    <TableCell>#{invoice.order_id}</TableCell>
+
+                    <TableCell>
+                      {invoice.created_at
+                        ? new Date(invoice.created_at).toLocaleDateString()
+                        : '—'}
+                    </TableCell>
+
+                    <TableCell
+                      sx={{
+                        maxWidth: 260,
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {invoice.delivery_address || '—'}
+                    </TableCell>
+
+                    <TableCell sx={{ fontWeight: 700 }}>
+                      ${parseFloat(invoice.total_amount || 0).toFixed(2)}
+                    </TableCell>
+
+                    <TableCell>
+                      <Chip
+                        label={status}
+                        color={STATUS_COLOR_PM[normalizedStatus] || 'default'}
+                        size="small"
+                      />
+                    </TableCell>
+
+                    <TableCell>
+                      {(invoice.items ?? []).length === 0 ? (
+                        '—'
+                      ) : (
+                        invoice.items.map((item, index) => (
+                          <Box key={item.order_item_id ?? `${item.product_id}-${index}`}>
+                            {item.product_name || `Product #${item.product_id}`} × {item.quantity}
+                          </Box>
+                        ))
+                      )}
+                    </TableCell>
+                  </TableRow>
+                );
+              })
+            )}
           </TableBody>
         </Table>
       </TableContainer>
@@ -678,21 +1097,39 @@ const ProductManagerPage = () => {
   const navigate = useNavigate();
   const [tab, setTab] = useState(0);
   const [categories, setCategories] = useState([]);
-  const [snack, setSnack] = useState({ open: false, message: '', severity: 'success' });
+  const [snack, setSnack] = useState({
+    open: false,
+    message: '',
+    severity: 'success',
+  });
 
   // Guard: only product_manager role can access this page
   useEffect(() => {
     const raw = localStorage.getItem('userData');
-    if (!raw) { navigate('/login'); return; }
+
+    if (!raw) {
+      navigate('/login');
+      return;
+    }
+
     try {
       const user = JSON.parse(raw);
-      if (user.role !== 'product_manager' && user.role !== 'ProductManager') {
+
+      if (
+        user.role !== 'product_manager' &&
+        user.role !== 'ProductManager' &&
+        user.role !== 'productmanager'
+      ) {
         navigate('/');
       }
     } catch {
       navigate('/login');
     }
   }, [navigate]);
+
+  const showSnack = useCallback((message, severity = 'success') => {
+    setSnack({ open: true, message, severity });
+  }, []);
 
   const fetchCategories = useCallback(async () => {
     try {
@@ -702,15 +1139,11 @@ const ProductManagerPage = () => {
     } catch {
       showSnack('Failed to load categories', 'error');
     }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [showSnack]);
 
   useEffect(() => {
     fetchCategories();
   }, [fetchCategories]);
-
-  const showSnack = (message, severity = 'success') => {
-    setSnack({ open: true, message, severity });
-  };
 
   return (
     <Container maxWidth="xl" sx={{ py: 4 }}>
@@ -719,8 +1152,9 @@ const ProductManagerPage = () => {
         <Typography variant="h4" sx={{ fontWeight: 'bold', color: '#2c3e50' }}>
           Product Manager Dashboard
         </Typography>
+
         <Typography variant="body1" color="textSecondary">
-          Manage your store's products and categories
+          Manage products, categories, comments, deliveries, and invoices
         </Typography>
       </Box>
 
@@ -735,6 +1169,7 @@ const ProductManagerPage = () => {
           <Tab icon={<Category />} iconPosition="start" label="Categories" />
           <Tab icon={<RateReview />} iconPosition="start" label="Comment Approval" />
           <Tab icon={<LocalShipping />} iconPosition="start" label="Deliveries" />
+          <Tab icon={<Receipt />} iconPosition="start" label="Invoices" />
         </Tabs>
       </Paper>
 
@@ -742,6 +1177,7 @@ const ProductManagerPage = () => {
       {tab === 0 && (
         <ProductsTab categories={categories} onSnack={showSnack} />
       )}
+
       {tab === 1 && (
         <CategoriesTab
           categories={categories}
@@ -749,8 +1185,12 @@ const ProductManagerPage = () => {
           onSnack={showSnack}
         />
       )}
+
       {tab === 2 && <CommentApprovalPage />}
+
       {tab === 3 && <DeliveriesTab onSnack={showSnack} />}
+
+      {tab === 4 && <InvoicesTab onSnack={showSnack} />}
 
       {/* Snackbar */}
       <Snackbar

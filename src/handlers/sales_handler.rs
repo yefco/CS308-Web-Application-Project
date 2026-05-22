@@ -9,7 +9,9 @@ use serde::{Deserialize, Serialize};
 use crate::middleware::auth::decode_jwt;
 use crate::models::product::SetDiscountRequest;
 use crate::models::return_request::PendingReturnRequestsResponse;
-use crate::repository::{notification_repository, order_repository, product_repository, return_repository};
+use crate::repository::{
+    notification_repository, order_repository, product_repository, return_repository,
+};
 use crate::utils::errors::AppError;
 use crate::AppState;
 
@@ -40,15 +42,45 @@ fn require_sales_manager(headers: &HeaderMap, jwt_secret: &str) -> Result<(), Ap
         .ok_or_else(|| AppError::Unauthorized("Authorization header is required".into()))?
         .to_str()
         .map_err(|_| AppError::Unauthorized("Authorization header is invalid".into()))?;
+
     let token = auth.strip_prefix("Bearer ").ok_or_else(|| {
         AppError::Unauthorized("Authorization header must use Bearer token".into())
     })?;
+
     let claims = decode_jwt(token, jwt_secret)?;
+
     if claims.role != "salesmanager" {
         return Err(AppError::Unauthorized(
             "Only the sales manager can perform this action".into(),
         ));
     }
+
+    Ok(())
+}
+
+// Invoice için sales manager veya product manager yetkisi
+fn require_sales_or_product_manager(
+    headers: &HeaderMap,
+    jwt_secret: &str,
+) -> Result<(), AppError> {
+    let auth = headers
+        .get(axum::http::header::AUTHORIZATION)
+        .ok_or_else(|| AppError::Unauthorized("Authorization header is required".into()))?
+        .to_str()
+        .map_err(|_| AppError::Unauthorized("Authorization header is invalid".into()))?;
+
+    let token = auth.strip_prefix("Bearer ").ok_or_else(|| {
+        AppError::Unauthorized("Authorization header must use Bearer token".into())
+    })?;
+
+    let claims = decode_jwt(token, jwt_secret)?;
+
+    if claims.role != "salesmanager" && claims.role != "productmanager" {
+        return Err(AppError::Unauthorized(
+            "Only sales managers or product managers can view invoices".into(),
+        ));
+    }
+
     Ok(())
 }
 
@@ -68,9 +100,13 @@ pub async fn set_discount(
         ));
     }
 
-    let product = product_repository::set_discount(&state.pool, product_id, payload.discount_percent)
-        .await?
-        .ok_or_else(|| AppError::NotFound("Product not found".into()))?;
+    let product = product_repository::set_discount(
+        &state.pool,
+        product_id,
+        payload.discount_percent,
+    )
+    .await?
+    .ok_or_else(|| AppError::NotFound("Product not found".into()))?;
 
     // Notify all users who have this product in their wishlist
     if payload.discount_percent > 0.0 {
@@ -84,6 +120,7 @@ pub async fn set_discount(
                 product.product_name,
                 product.price * (1.0 - payload.discount_percent / 100.0)
             );
+
             notification_repository::insert_notification(
                 &state.pool,
                 user_id,
@@ -116,6 +153,7 @@ pub async fn get_revenue_report(
         revenue: Option<f64>,
         order_count: Option<i64>,
     }
+
     #[derive(sqlx::FromRow)]
     struct RefundRow {
         refunds: Option<f64>,
@@ -170,14 +208,14 @@ pub async fn get_revenue_report(
     }))
 }
 
-// ─── GET /api/sales/invoices (sales_manager) ─────────────────
+// ─── GET /api/sales/invoices (sales_manager + product_manager) ───────────────
 
 pub async fn list_invoices(
     State(state): State<AppState>,
     headers: HeaderMap,
     Query(params): Query<DateRangeQuery>,
 ) -> Result<impl IntoResponse, AppError> {
-    require_sales_manager(&headers, &state.jwt_secret)?;
+    require_sales_or_product_manager(&headers, &state.jwt_secret)?;
 
     let from = params.from.as_deref().unwrap_or("2000-01-01");
     let to = params.to.as_deref().unwrap_or("2100-12-31");
@@ -185,9 +223,12 @@ pub async fn list_invoices(
     let orders = order_repository::list_orders_in_date_range(&state.pool, from, to).await?;
 
     let mut responses = Vec::with_capacity(orders.len());
+
     for order in orders {
         let items = order_repository::get_order_items(&state.pool, order.order_id).await?;
+
         use crate::models::order::{OrderItemResponse, OrderResponse};
+
         let item_responses: Vec<OrderItemResponse> = items
             .into_iter()
             .map(|item| OrderItemResponse {
@@ -199,6 +240,7 @@ pub async fn list_invoices(
                 subtotal: item.unit_price * item.quantity as f64,
             })
             .collect();
+
         responses.push(OrderResponse {
             order_id: order.order_id,
             status: order.status,
@@ -224,6 +266,7 @@ pub async fn list_pending_returns(
 
     let requests = return_repository::list_pending_return_requests(&state.pool).await?;
     let mapped = requests.into_iter().map(|r| r.into()).collect();
+
     Ok(Json(PendingReturnRequestsResponse { requests: mapped }))
 }
 
@@ -250,9 +293,10 @@ pub async fn approve_return(
     // Re-stock the item
     product_repository::increment_stock(&state.pool, req.product_id, req.quantity).await?;
 
-    let updated = return_repository::update_return_request_status(&state.pool, request_id, "approved")
-        .await?
-        .ok_or_else(|| AppError::NotFound("Return request not found".into()))?;
+    let updated =
+        return_repository::update_return_request_status(&state.pool, request_id, "approved")
+            .await?
+            .ok_or_else(|| AppError::NotFound("Return request not found".into()))?;
 
     use crate::models::return_request::ReturnRequestResponse;
     Ok(Json(ReturnRequestResponse::from(updated)))
@@ -278,9 +322,10 @@ pub async fn reject_return(
         )));
     }
 
-    let updated = return_repository::update_return_request_status(&state.pool, request_id, "rejected")
-        .await?
-        .ok_or_else(|| AppError::NotFound("Return request not found".into()))?;
+    let updated =
+        return_repository::update_return_request_status(&state.pool, request_id, "rejected")
+            .await?
+            .ok_or_else(|| AppError::NotFound("Return request not found".into()))?;
 
     use crate::models::return_request::ReturnRequestResponse;
     Ok((StatusCode::OK, Json(ReturnRequestResponse::from(updated))))

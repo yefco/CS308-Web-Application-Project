@@ -13,9 +13,25 @@ pub fn routes() -> Router<AppState> {
             "/api/products/:id/discount",
             patch(sales_handler::set_discount),
         )
-        // Revenue & invoices
-        .route("/api/sales/revenue", get(sales_handler::get_revenue_report))
-        .route("/api/sales/invoices", get(sales_handler::list_invoices))
+
+        // Revenue
+        .route(
+            "/api/sales/revenue",
+            get(sales_handler::get_revenue_report),
+        )
+
+        // Invoices
+        // Sales manager eski endpoint üzerinden görebilir.
+        .route(
+            "/api/sales/invoices",
+            get(sales_handler::list_invoices),
+        )
+        // Product manager bu endpoint üzerinden invoice görüntüler.
+        .route(
+            "/api/product-manager/invoices",
+            get(sales_handler::list_invoices),
+        )
+
         // Return request management (sales manager)
         .route(
             "/api/returns/pending",
