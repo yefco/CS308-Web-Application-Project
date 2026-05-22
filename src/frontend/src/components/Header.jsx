@@ -163,13 +163,22 @@ const Header = ({ isLoggedIn, onLogout }) => {
                     </MenuItem>
                   )}
                   {isSalesManager && (
-                    <MenuItem
-                      onClick={() => { navigate('/delivery'); handleUserMenuClose(); }}
-                      sx={{ color: '#27ae60', fontWeight: 'bold' }}
-                    >
-                      <Dashboard sx={{ mr: 1, fontSize: '1.2rem' }} />
-                      Delivery Dashboard
-                    </MenuItem>
+                    <>
+                      <MenuItem
+                        onClick={() => { navigate('/sales-manager'); handleUserMenuClose(); }}
+                        sx={{ color: '#f39c12', fontWeight: 'bold' }}
+                      >
+                        <Dashboard sx={{ mr: 1, fontSize: '1.2rem' }} />
+                        Sales Dashboard
+                      </MenuItem>
+                      <MenuItem
+                        onClick={() => { navigate('/delivery'); handleUserMenuClose(); }}
+                        sx={{ color: '#27ae60', fontWeight: 'bold' }}
+                      >
+                        <Dashboard sx={{ mr: 1, fontSize: '1.2rem' }} />
+                        Delivery Dashboard
+                      </MenuItem>
+                    </>
                   )}
                   {isCustomer && (
                     <MenuItem onClick={() => { navigate('/profile'); handleUserMenuClose(); }}>
