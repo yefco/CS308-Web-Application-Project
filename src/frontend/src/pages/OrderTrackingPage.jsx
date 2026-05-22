@@ -28,6 +28,17 @@ import {
 } from '@mui/icons-material';
 import { cancelOrder, getUserOrders, returnOrder } from '../services/orderTrackingService';
 
+const requestItemReturn = async (orderId, itemId) => {
+  const token = localStorage.getItem('authToken');
+  const res = await fetch(`/api/orders/${orderId}/items/${itemId}/return-request`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+  });
+  const data = await res.json().catch(() => null);
+  if (!res.ok) throw new Error(data?.message || data?.error || 'Return request failed.');
+  return data;
+};
+
 const STATUS_STEPS = ['Order Placed', 'Processing', 'In Transit', 'Delivered'];
 const RETURN_WINDOW_DAYS = 30;
 
@@ -80,6 +91,7 @@ const OrderTrackingPage = ({ isLoggedIn }) => {
   const [actionDialog, setActionDialog] = useState({ open: false, type: null, order: null });
   const [actionLoading, setActionLoading] = useState(false);
   const [snack, setSnack] = useState({ open: false, message: '', severity: 'success' });
+  const [itemReturnLoading, setItemReturnLoading] = useState({});
 
   useEffect(() => {
     if (!isLoggedIn) navigate('/login', { state: { returnTo: '/order-tracking' } });
@@ -299,33 +311,62 @@ const OrderTrackingPage = ({ isLoggedIn }) => {
                       Items
                     </Typography>
                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, mb: 2 }}>
-                      {order.items.map((item, index) => (
-                        <Box
-                          key={index}
-                          sx={{
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center',
-                            py: 1,
-                            px: 1.5,
-                            borderRadius: 1.5,
-                            bgcolor: '#fafafa',
-                            border: '1px solid #f0f0f0',
-                          }}
-                        >
-                          <Box>
-                            <Typography variant="body2" sx={{ fontWeight: 600, color: '#2c3e50' }}>
-                              {item.product_name ?? item.name}
-                            </Typography>
-                            <Typography variant="caption" sx={{ color: '#95a5a6' }}>
-                              Qty: {item.quantity} × ${parseFloat(item.unit_price ?? item.price ?? 0).toFixed(2)}
-                            </Typography>
+                      {order.items.map((item, index) => {
+                        const itemKey = `${orderId}-${item.order_item_id ?? index}`;
+                        const canReturnItem = canReturn && item.order_item_id;
+                        return (
+                          <Box
+                            key={index}
+                            sx={{
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'center',
+                              py: 1,
+                              px: 1.5,
+                              borderRadius: 1.5,
+                              bgcolor: '#fafafa',
+                              border: '1px solid #f0f0f0',
+                              flexWrap: 'wrap',
+                              gap: 1,
+                            }}
+                          >
+                            <Box>
+                              <Typography variant="body2" sx={{ fontWeight: 600, color: '#2c3e50' }}>
+                                {item.product_name ?? item.name}
+                              </Typography>
+                              <Typography variant="caption" sx={{ color: '#95a5a6' }}>
+                                Qty: {item.quantity} × ${parseFloat(item.unit_price ?? item.price ?? 0).toFixed(2)}
+                              </Typography>
+                            </Box>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                              <Typography variant="body2" sx={{ fontWeight: 700, color: '#3498db' }}>
+                                ${parseFloat(item.subtotal ?? (item.unit_price * item.quantity) ?? 0).toFixed(2)}
+                              </Typography>
+                              {canReturnItem && (
+                                <Button
+                                  size="small"
+                                  variant="outlined"
+                                  color="secondary"
+                                  disabled={!!itemReturnLoading[itemKey]}
+                                  onClick={async () => {
+                                    setItemReturnLoading(prev => ({ ...prev, [itemKey]: true }));
+                                    try {
+                                      await requestItemReturn(orderId, item.order_item_id);
+                                      setSnack({ open: true, message: `Return request submitted for ${item.product_name ?? 'item'}.`, severity: 'success' });
+                                    } catch (err) {
+                                      setSnack({ open: true, message: err.message || 'Return request failed.', severity: 'error' });
+                                    } finally {
+                                      setItemReturnLoading(prev => ({ ...prev, [itemKey]: false }));
+                                    }
+                                  }}
+                                >
+                                  {itemReturnLoading[itemKey] ? 'Requesting…' : 'Return Item'}
+                                </Button>
+                              )}
+                            </Box>
                           </Box>
-                          <Typography variant="body2" sx={{ fontWeight: 700, color: '#3498db' }}>
-                            ${parseFloat(item.subtotal ?? (item.unit_price * item.quantity) ?? 0).toFixed(2)}
-                          </Typography>
-                        </Box>
-                      ))}
+                        );
+                      })}
                     </Box>
                   </>
                 )}

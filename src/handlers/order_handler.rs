@@ -8,6 +8,8 @@ use chrono::Utc;
 
 use crate::middleware::auth::{decode_jwt, extract_authenticated_user_id};
 use crate::models::order::{PlaceOrderRequest, UpdateOrderStatusRequest};
+use crate::models::return_request::ReturnRequestResponse;
+use crate::repository::return_repository;
 use crate::utils::errors::AppError;
 use crate::AppState;
 
@@ -65,26 +67,66 @@ pub async fn return_order(
     Ok(Json(response))
 }
 
-/// GET /api/delivery/orders — delivery department sees all pending orders.
-/// Requires sales_manager role.
+/// POST /api/orders/:order_id/items/:item_id/return-request
+/// Customer submits a selective return request for a single delivered order item.
+pub async fn request_item_return(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path((order_id, item_id)): Path<(i32, i32)>,
+) -> Result<impl IntoResponse, AppError> {
+    let user_id = extract_authenticated_user_id(&headers, &state.jwt_secret)?;
+
+    // Validate the item belongs to a delivered order of this user within 30 days
+    let (product_id, unit_price, qty) =
+        return_repository::get_order_item_for_return(&state.pool, item_id, user_id)
+            .await?
+            .ok_or_else(|| {
+                AppError::BadRequest(
+                    "Item not eligible for return (not found, not delivered, wrong user, or \
+                     outside 30-day window)"
+                        .into(),
+                )
+            })?;
+
+    let refund_amount = unit_price * qty as f64;
+    let req =
+        return_repository::create_return_request(&state.pool, order_id, item_id, user_id, refund_amount)
+            .await
+            .map_err(AppError::from)?;
+
+    // Notify the sales manager — find SM user ids
+    // For demo we just log; in production we'd query for users with salesmanager role
+    tracing::info!(
+        "📦 Return request #{} created: user_id={} product_id={} refund=${:.2}",
+        req.request_id,
+        user_id,
+        product_id,
+        refund_amount
+    );
+
+    Ok((StatusCode::CREATED, Json(ReturnRequestResponse::from(req))))
+}
+
+/// GET /api/delivery/orders — delivery department sees all orders.
+/// Requires sales_manager or product_manager role.
 pub async fn list_all_orders(
     State(state): State<AppState>,
     headers: HeaderMap,
 ) -> Result<impl IntoResponse, AppError> {
-    require_sales_manager(&headers, &state.jwt_secret)?;
+    require_manager(&headers, &state.jwt_secret)?;
     let response = state.order_service.list_all_orders().await?;
     Ok(Json(response))
 }
 
 /// PUT /api/delivery/orders/:order_id/status — delivery dept updates order status.
-/// Requires sales_manager role.
+/// Requires sales_manager or product_manager role.
 pub async fn update_delivery_status(
     State(state): State<AppState>,
     headers: HeaderMap,
     Path(order_id): Path<i32>,
     Json(payload): Json<UpdateOrderStatusRequest>,
 ) -> Result<impl IntoResponse, AppError> {
-    require_sales_manager(&headers, &state.jwt_secret)?;
+    require_manager(&headers, &state.jwt_secret)?;
     let response = state
         .order_service
         .update_delivery_status(order_id, payload.status)
@@ -120,7 +162,7 @@ pub async fn send_invoice_email(
     })))
 }
 
-fn require_sales_manager(headers: &HeaderMap, jwt_secret: &str) -> Result<(), AppError> {
+fn require_manager(headers: &HeaderMap, jwt_secret: &str) -> Result<(), AppError> {
     let auth_header = headers
         .get(axum::http::header::AUTHORIZATION)
         .ok_or_else(|| AppError::Unauthorized("Authorization header is required".into()))?
@@ -133,10 +175,9 @@ fn require_sales_manager(headers: &HeaderMap, jwt_secret: &str) -> Result<(), Ap
 
     let claims = decode_jwt(token, jwt_secret)?;
 
-    // JWT role for SalesManager is "salesmanager" (Debug + to_lowercase)
-    if claims.role != "salesmanager" {
+    if claims.role != "salesmanager" && claims.role != "productmanager" {
         return Err(AppError::Unauthorized(
-            "Only the delivery department can perform this action".into(),
+            "Only a manager can perform this action".into(),
         ));
     }
 

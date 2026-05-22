@@ -2,6 +2,14 @@ use sqlx::{PgPool, Postgres, Transaction};
 
 use crate::models::product::{Category, Product};
 
+const PRODUCT_COLS: &str = r#"
+    product_id, category_id, product_name, model, serial_number,
+    description, stock_quantity,
+    price::FLOAT8           AS price,
+    discount_percent::FLOAT8 AS discount_percent,
+    warranty_status, distributor_info, created_at
+"#;
+
 // ─── Category queries ─────────────────────────────────────────
 
 pub async fn list_categories(pool: &PgPool) -> Result<Vec<Category>, sqlx::Error> {
@@ -74,29 +82,17 @@ pub async fn delete_category(pool: &PgPool, category_id: i32) -> Result<bool, sq
 // ─── Product queries ──────────────────────────────────────────
 
 pub async fn list_products(pool: &PgPool) -> Result<Vec<Product>, sqlx::Error> {
-    sqlx::query_as::<_, Product>(
-        r#"
-        SELECT product_id, category_id, product_name, model, serial_number,
-               description, stock_quantity, price::FLOAT8 AS price,
-               warranty_status, distributor_info, created_at
-        FROM products
-        ORDER BY created_at DESC, product_id DESC
-        "#,
-    )
+    sqlx::query_as::<_, Product>(&format!(
+        "SELECT {PRODUCT_COLS} FROM products ORDER BY created_at DESC, product_id DESC"
+    ))
     .fetch_all(pool)
     .await
 }
 
 pub async fn find_product(pool: &PgPool, product_id: i32) -> Result<Option<Product>, sqlx::Error> {
-    sqlx::query_as::<_, Product>(
-        r#"
-        SELECT product_id, category_id, product_name, model, serial_number,
-               description, stock_quantity, price::FLOAT8 AS price,
-               warranty_status, distributor_info, created_at
-        FROM products
-        WHERE product_id = $1
-        "#,
-    )
+    sqlx::query_as::<_, Product>(&format!(
+        "SELECT {PRODUCT_COLS} FROM products WHERE product_id = $1"
+    ))
     .bind(product_id)
     .fetch_optional(pool)
     .await
@@ -106,15 +102,9 @@ pub async fn find_product_in_tx(
     tx: &mut Transaction<'_, Postgres>,
     product_id: i32,
 ) -> Result<Option<Product>, sqlx::Error> {
-    sqlx::query_as::<_, Product>(
-        r#"
-        SELECT product_id, category_id, product_name, model, serial_number,
-               description, stock_quantity, price::FLOAT8 AS price,
-               warranty_status, distributor_info, created_at
-        FROM products
-        WHERE product_id = $1
-        "#,
-    )
+    sqlx::query_as::<_, Product>(&format!(
+        "SELECT {PRODUCT_COLS} FROM products WHERE product_id = $1"
+    ))
     .bind(product_id)
     .fetch_optional(&mut **tx)
     .await
@@ -132,18 +122,16 @@ pub async fn create_product(
     warranty_status: bool,
     distributor_info: Option<&str>,
 ) -> Result<Product, sqlx::Error> {
-    sqlx::query_as::<_, Product>(
+    sqlx::query_as::<_, Product>(&format!(
         r#"
         INSERT INTO products (
             category_id, product_name, model, serial_number, description,
             stock_quantity, price, warranty_status, distributor_info
         )
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-        RETURNING product_id, category_id, product_name, model, serial_number,
-                  description, stock_quantity, price::FLOAT8 AS price,
-                  warranty_status, distributor_info, created_at
-        "#,
-    )
+        RETURNING {PRODUCT_COLS}
+        "#
+    ))
     .bind(category_id)
     .bind(product_name)
     .bind(model)
@@ -169,7 +157,7 @@ pub async fn update_product(
     warranty_status: bool,
     distributor_info: Option<&str>,
 ) -> Result<Option<Product>, sqlx::Error> {
-    sqlx::query_as::<_, Product>(
+    sqlx::query_as::<_, Product>(&format!(
         r#"
         UPDATE products
         SET category_id = $2,
@@ -181,11 +169,9 @@ pub async fn update_product(
             warranty_status = $8,
             distributor_info = $9
         WHERE product_id = $1
-        RETURNING product_id, category_id, product_name, model, serial_number,
-                  description, stock_quantity, price::FLOAT8 AS price,
-                  warranty_status, distributor_info, created_at
-        "#,
-    )
+        RETURNING {PRODUCT_COLS}
+        "#
+    ))
     .bind(product_id)
     .bind(category_id)
     .bind(product_name)
@@ -204,20 +190,47 @@ pub async fn update_stock(
     product_id: i32,
     stock_quantity: i32,
 ) -> Result<Option<Product>, sqlx::Error> {
-    sqlx::query_as::<_, Product>(
+    sqlx::query_as::<_, Product>(&format!(
         r#"
         UPDATE products
         SET stock_quantity = $2
         WHERE product_id = $1
-        RETURNING product_id, category_id, product_name, model, serial_number,
-                  description, stock_quantity, price::FLOAT8 AS price,
-                  warranty_status, distributor_info, created_at
-        "#,
-    )
+        RETURNING {PRODUCT_COLS}
+        "#
+    ))
     .bind(product_id)
     .bind(stock_quantity)
     .fetch_optional(pool)
     .await
+}
+
+pub async fn set_discount(
+    pool: &PgPool,
+    product_id: i32,
+    discount_percent: f64,
+) -> Result<Option<Product>, sqlx::Error> {
+    sqlx::query_as::<_, Product>(&format!(
+        r#"
+        UPDATE products
+        SET discount_percent = $2
+        WHERE product_id = $1
+        RETURNING {PRODUCT_COLS}
+        "#
+    ))
+    .bind(product_id)
+    .bind(discount_percent)
+    .fetch_optional(pool)
+    .await
+}
+
+pub async fn get_wishlist_user_ids_for_product(
+    pool: &PgPool,
+    product_id: i32,
+) -> Result<Vec<i32>, sqlx::Error> {
+    sqlx::query_scalar("SELECT user_id FROM wishlist_items WHERE product_id = $1")
+        .bind(product_id)
+        .fetch_all(pool)
+        .await
 }
 
 pub async fn decrement_stock_in_tx(
@@ -225,17 +238,15 @@ pub async fn decrement_stock_in_tx(
     product_id: i32,
     quantity: i32,
 ) -> Result<Option<Product>, sqlx::Error> {
-    sqlx::query_as::<_, Product>(
+    sqlx::query_as::<_, Product>(&format!(
         r#"
         UPDATE products
         SET stock_quantity = stock_quantity - $2
         WHERE product_id = $1
           AND stock_quantity >= $2
-        RETURNING product_id, category_id, product_name, model, serial_number,
-                  description, stock_quantity, price::FLOAT8 AS price,
-                  warranty_status, distributor_info, created_at
-        "#,
-    )
+        RETURNING {PRODUCT_COLS}
+        "#
+    ))
     .bind(product_id)
     .bind(quantity)
     .fetch_optional(&mut **tx)
@@ -257,6 +268,21 @@ pub async fn increment_stock_in_tx(
     .bind(product_id)
     .bind(quantity)
     .execute(&mut **tx)
+    .await
+    .map(|_| ())
+}
+
+pub async fn increment_stock(
+    pool: &PgPool,
+    product_id: i32,
+    quantity: i32,
+) -> Result<(), sqlx::Error> {
+    sqlx::query(
+        "UPDATE products SET stock_quantity = stock_quantity + $2 WHERE product_id = $1",
+    )
+    .bind(product_id)
+    .bind(quantity)
+    .execute(pool)
     .await
     .map(|_| ())
 }

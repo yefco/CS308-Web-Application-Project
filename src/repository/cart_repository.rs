@@ -39,11 +39,12 @@ pub async fn get_or_create_guest_cart(pool: &PgPool, session_id: &str) -> Result
 
 pub async fn get_cart_items(pool: &PgPool, cart_id: i32) -> Result<Vec<CartItemRow>, sqlx::Error> {
     sqlx::query_as(
-        "SELECT ci.cart_item_id, ci.cart_id, ci.product_id, ci.quantity, ci.added_at,
-                p.product_name, p.price::FLOAT8 AS price
+        r#"SELECT ci.cart_item_id, ci.cart_id, ci.product_id, ci.quantity, ci.added_at,
+                p.product_name,
+                (p.price * (1.0 - p.discount_percent / 100.0))::FLOAT8 AS price
          FROM cart_items ci
          JOIN products p ON p.product_id = ci.product_id
-         WHERE ci.cart_id = $1",
+         WHERE ci.cart_id = $1"#,
     )
     .bind(cart_id)
     .fetch_all(pool)
@@ -55,11 +56,12 @@ pub async fn get_cart_items_in_tx(
     cart_id: i32,
 ) -> Result<Vec<CartItemRow>, sqlx::Error> {
     sqlx::query_as(
-        "SELECT ci.cart_item_id, ci.cart_id, ci.product_id, ci.quantity, ci.added_at,
-                p.product_name, p.price::FLOAT8 AS price
+        r#"SELECT ci.cart_item_id, ci.cart_id, ci.product_id, ci.quantity, ci.added_at,
+                p.product_name,
+                (p.price * (1.0 - p.discount_percent / 100.0))::FLOAT8 AS price
          FROM cart_items ci
          JOIN products p ON p.product_id = ci.product_id
-         WHERE ci.cart_id = $1",
+         WHERE ci.cart_id = $1"#,
     )
     .bind(cart_id)
     .fetch_all(&mut **tx)
