@@ -9,6 +9,8 @@ pub enum OrderStatus {
     Processing,
     InTransit,
     Delivered,
+    Cancelled,
+    Returned,
 }
 
 #[derive(Debug, Clone, FromRow)]
@@ -60,16 +62,6 @@ pub struct OrderResponse {
     pub delivery_address: String,
     pub total_amount: f64,
     pub items: Vec<OrderItemResponse>,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
-}
-
-#[derive(Debug, Serialize)]
-pub struct OrderSummaryResponse {
-    pub order_id: i32,
-    pub status: OrderStatus,
-    pub delivery_address: String,
-    pub total_amount: f64,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }

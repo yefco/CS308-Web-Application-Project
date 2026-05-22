@@ -66,8 +66,29 @@ impl AuthService {
     /// 3. Insert the user row via the repository.
     /// 4. Generate a JWT and return it with the user data.
     pub async fn sign_up(&self, req: SignUpRequest) -> Result<AuthResponse, AppError> {
+        let user_name = req.user_name.trim().to_string();
+        let email = req.email.trim().to_lowercase();
+        let tax_id = req.tax_id.trim().to_string();
+        let home_address = req.home_address.trim().to_string();
+
+        if user_name.is_empty() {
+            return Err(AppError::BadRequest("Name is required".into()));
+        }
+        if email.is_empty() {
+            return Err(AppError::BadRequest("Email is required".into()));
+        }
+        if req.password.trim().is_empty() {
+            return Err(AppError::BadRequest("Password is required".into()));
+        }
+        if tax_id.is_empty() {
+            return Err(AppError::BadRequest("Tax ID is required".into()));
+        }
+        if home_address.is_empty() {
+            return Err(AppError::BadRequest("Home address is required".into()));
+        }
+
         // ── Guard: duplicate email ───────────────────────────
-        let existing = user_repository::find_by_email(&self.pool, &req.email).await?;
+        let existing = user_repository::find_by_email(&self.pool, &email).await?;
         if existing.is_some() {
             return Err(AppError::Conflict("Email is already registered".into()));
         }
@@ -79,9 +100,11 @@ impl AuthService {
         // ── Persist user ─────────────────────────────────────
         let user = user_repository::create_user(
             &self.pool,
-            &req.user_name,
-            &req.email,
+            &user_name,
+            &email,
             &password_hash,
+            &tax_id,
+            &home_address,
         )
         .await?;
 
@@ -101,8 +124,10 @@ impl AuthService {
     /// 2. Verify the plaintext password against the bcrypt hash.
     /// 3. Generate and return a JWT.
     pub async fn login(&self, req: LoginRequest) -> Result<AuthResponse, AppError> {
+        let email = req.email.trim().to_lowercase();
+
         // ── Find user ────────────────────────────────────────
-        let user = user_repository::find_by_email(&self.pool, &req.email)
+        let user = user_repository::find_by_email(&self.pool, &email)
             .await?
             .ok_or_else(|| AppError::Unauthorized("Invalid email or password".into()))?;
 

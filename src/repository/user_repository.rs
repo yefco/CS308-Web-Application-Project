@@ -24,11 +24,13 @@ pub async fn create_user(
     user_name: &str,
     email: &str,
     password_hash: &str,
+    tax_id: &str,
+    home_address: &str,
 ) -> Result<User, sqlx::Error> {
     sqlx::query_as::<_, User>(
         r#"
-        INSERT INTO users (user_name, email, password_hash)
-        VALUES ($1, $2, $3)
+        INSERT INTO users (user_name, email, password_hash, tax_id, home_address)
+        VALUES ($1, $2, $3, $4, $5)
         RETURNING user_id, user_name, email, password_hash, role,
                   tax_id, home_address, created_at, updated_at
         "#,
@@ -36,6 +38,8 @@ pub async fn create_user(
     .bind(user_name)
     .bind(email)
     .bind(password_hash)
+    .bind(tax_id)
+    .bind(home_address)
     .fetch_one(pool)
     .await
 }
@@ -44,10 +48,7 @@ pub async fn create_user(
 ///
 /// Returns `None` if no user with that email exists.
 /// Used during login to verify credentials.
-pub async fn find_by_email(
-    pool: &PgPool,
-    email: &str,
-) -> Result<Option<User>, sqlx::Error> {
+pub async fn find_by_email(pool: &PgPool, email: &str) -> Result<Option<User>, sqlx::Error> {
     sqlx::query_as::<_, User>(
         r#"
         SELECT user_id, user_name, email, password_hash, role,
@@ -65,10 +66,7 @@ pub async fn find_by_email(
 ///
 /// Used to resolve the user from a JWT token's `sub` claim
 /// during authenticated requests.
-pub async fn find_by_id(
-    pool: &PgPool,
-    user_id: i32,
-) -> Result<Option<User>, sqlx::Error> {
+pub async fn find_by_id(pool: &PgPool, user_id: i32) -> Result<Option<User>, sqlx::Error> {
     sqlx::query_as::<_, User>(
         r#"
         SELECT user_id, user_name, email, password_hash, role,

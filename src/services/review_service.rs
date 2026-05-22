@@ -1,6 +1,8 @@
 use sqlx::PgPool;
 
-use crate::models::review::{PendingReviewsResponse, ReviewResponse, ReviewsResponse, UserReviewResponse};
+use crate::models::review::{
+    PendingReviewsResponse, ReviewResponse, ReviewsResponse, UserReviewResponse,
+};
 use crate::repository::{order_repository, review_repository};
 use crate::utils::errors::AppError;
 
@@ -24,14 +26,17 @@ impl ReviewService {
     pub async fn submit_review(
         &self,
         product_id: i32,
-        user_id:    i32,
-        rating:     i32,
-        comment:    Option<String>,
+        user_id: i32,
+        rating: i32,
+        comment: Option<String>,
     ) -> Result<(), AppError> {
         if !(1..=5).contains(&rating) {
-            return Err(AppError::BadRequest("Rating must be between 1 and 5".into()));
+            return Err(AppError::BadRequest(
+                "Rating must be between 1 and 5".into(),
+            ));
         }
-        let purchased = order_repository::has_purchased_product(&self.pool, user_id, product_id).await?;
+        let purchased =
+            order_repository::has_purchased_product(&self.pool, user_id, product_id).await?;
         if !purchased {
             return Err(AppError::Forbidden(
                 "You must purchase this product before leaving a review".into(),
@@ -66,7 +71,7 @@ impl ReviewService {
     pub async fn get_user_review(
         &self,
         product_id: i32,
-        user_id:    i32,
+        user_id: i32,
     ) -> Result<UserReviewResponse, AppError> {
         review_repository::get_user_review(&self.pool, product_id, user_id)
             .await?

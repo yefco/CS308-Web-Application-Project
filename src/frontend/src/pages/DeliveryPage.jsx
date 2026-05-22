@@ -43,6 +43,8 @@ const STATUS_COLOR = {
   processing: 'warning',
   in_transit: 'info',
   delivered:  'success',
+  cancelled:  'default',
+  returned:   'secondary',
 };
 
 function normalizeStatus(s) {
@@ -58,6 +60,8 @@ function chipLabel(status) {
   const s = normalizeStatus(status);
   if (s === 'in_transit') return 'In Transit';
   if (s === 'delivered')  return 'Delivered';
+  if (s === 'cancelled')  return 'Cancelled';
+  if (s === 'returned')   return 'Returned';
   return 'Processing';
 }
 
@@ -177,7 +181,9 @@ const DeliveryPage = () => {
                 {orders.map(order => {
                   const orderId = order.order_id ?? order.id;
                   const status = order.status ?? 'processing';
+                  const normalized = normalizeStatus(status);
                   const isUpdating = updatingId === orderId;
+                  const isTerminal = normalized === 'cancelled' || normalized === 'returned';
 
                   return (
                     <TableRow key={orderId} hover>
@@ -209,16 +215,22 @@ const DeliveryPage = () => {
                         />
                       </TableCell>
                       <TableCell>
-                        <FormControl size="small" sx={{ minWidth: 140 }} disabled={isUpdating}>
-                          <Select
-                            value={normalizeStatus(status)}
-                            onChange={(e) => handleStatusChange(orderId, e.target.value)}
-                          >
-                            {STATUS_OPTIONS.map(opt => (
-                              <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>
-                            ))}
-                          </Select>
-                        </FormControl>
+                        {isTerminal ? (
+                          <Typography variant="caption" sx={{ color: '#7f8c8d', fontWeight: 600 }}>
+                            Terminal state
+                          </Typography>
+                        ) : (
+                          <FormControl size="small" sx={{ minWidth: 140 }} disabled={isUpdating}>
+                            <Select
+                              value={normalized}
+                              onChange={(e) => handleStatusChange(orderId, e.target.value)}
+                            >
+                              {STATUS_OPTIONS.map(opt => (
+                                <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>
+                              ))}
+                            </Select>
+                          </FormControl>
+                        )}
                         {isUpdating && <CircularProgress size={16} sx={{ ml: 1 }} />}
                       </TableCell>
                     </TableRow>

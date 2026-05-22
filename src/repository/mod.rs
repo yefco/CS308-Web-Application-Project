@@ -4,3 +4,4 @@ pub mod payment_repository;
 pub mod product_repository;
 pub mod review_repository;
 pub mod user_repository;
+pub mod wishlist_repository;

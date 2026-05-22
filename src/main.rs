@@ -30,13 +30,17 @@ use tower_http::trace::TraceLayer;
 
 use crate::config::app_config::AppConfig;
 use crate::database::db;
-use crate::routes::{auth_routes, cart_routes, order_routes, payment_routes, product_routes, review_routes};
+use crate::routes::{
+    auth_routes, cart_routes, order_routes, payment_routes, product_routes, review_routes,
+    wishlist_routes,
+};
 use crate::services::auth_service::AuthService;
 use crate::services::cart_service::CartService;
 use crate::services::order_service::OrderService;
 use crate::services::payment_service::PaymentService;
 use crate::services::product_service::ProductService;
 use crate::services::review_service::ReviewService;
+use crate::services::wishlist_service::WishlistService;
 
 // ─── Shared Application State ────────────────────────────────
 
@@ -54,6 +58,7 @@ pub struct AppState {
     pub payment_service: PaymentService,
     pub product_service: ProductService,
     pub review_service: ReviewService,
+    pub wishlist_service: WishlistService,
     pub jwt_secret: String,
 }
 
@@ -90,6 +95,7 @@ async fn main() {
     let payment_service = PaymentService::new(pool.clone());
     let product_service = ProductService::new(pool.clone());
     let review_service = ReviewService::new(pool.clone());
+    let wishlist_service = WishlistService::new(pool.clone());
 
     let state = AppState {
         auth_service,
@@ -98,6 +104,7 @@ async fn main() {
         payment_service,
         product_service,
         review_service,
+        wishlist_service,
         jwt_secret: config.jwt_secret.clone(),
     };
 
@@ -116,6 +123,7 @@ async fn main() {
         .merge(payment_routes::routes())
         .merge(product_routes::routes())
         .merge(review_routes::routes())
+        .merge(wishlist_routes::routes())
         .layer(cors)
         .layer(TraceLayer::new_for_http())
         .with_state(state);

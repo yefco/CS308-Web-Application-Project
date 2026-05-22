@@ -43,6 +43,28 @@ pub async fn get_order(
     Ok(Json(response))
 }
 
+/// POST /api/orders/:order_id/cancel — customer cancels a processing order.
+pub async fn cancel_order(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(order_id): Path<i32>,
+) -> Result<impl IntoResponse, AppError> {
+    let user_id = extract_authenticated_user_id(&headers, &state.jwt_secret)?;
+    let response = state.order_service.cancel_order(user_id, order_id).await?;
+    Ok(Json(response))
+}
+
+/// POST /api/orders/:order_id/return — customer returns a delivered order.
+pub async fn return_order(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(order_id): Path<i32>,
+) -> Result<impl IntoResponse, AppError> {
+    let user_id = extract_authenticated_user_id(&headers, &state.jwt_secret)?;
+    let response = state.order_service.return_order(user_id, order_id).await?;
+    Ok(Json(response))
+}
+
 /// GET /api/delivery/orders — delivery department sees all pending orders.
 /// Requires sales_manager role.
 pub async fn list_all_orders(
@@ -105,9 +127,9 @@ fn require_sales_manager(headers: &HeaderMap, jwt_secret: &str) -> Result<(), Ap
         .to_str()
         .map_err(|_| AppError::Unauthorized("Authorization header is invalid".into()))?;
 
-    let token = auth_header
-        .strip_prefix("Bearer ")
-        .ok_or_else(|| AppError::Unauthorized("Authorization header must use Bearer token".into()))?;
+    let token = auth_header.strip_prefix("Bearer ").ok_or_else(|| {
+        AppError::Unauthorized("Authorization header must use Bearer token".into())
+    })?;
 
     let claims = decode_jwt(token, jwt_secret)?;
 

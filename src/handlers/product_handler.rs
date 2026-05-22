@@ -26,9 +26,7 @@ pub async fn get_product(
     Ok(Json(state.product_service.get_product(product_id).await?))
 }
 
-pub async fn list_categories(
-    State(state): State<AppState>,
-) -> Result<impl IntoResponse, AppError> {
+pub async fn list_categories(State(state): State<AppState>) -> Result<impl IntoResponse, AppError> {
     Ok(Json(state.product_service.list_categories().await?))
 }
 
@@ -59,7 +57,10 @@ pub async fn update_product(
 ) -> Result<impl IntoResponse, AppError> {
     require_product_manager(&headers, &state.jwt_secret)?;
     Ok(Json(
-        state.product_service.update_product(product_id, payload).await?,
+        state
+            .product_service
+            .update_product(product_id, payload)
+            .await?,
     ))
 }
 
@@ -71,7 +72,10 @@ pub async fn update_stock(
 ) -> Result<impl IntoResponse, AppError> {
     require_product_manager(&headers, &state.jwt_secret)?;
     Ok(Json(
-        state.product_service.update_stock(product_id, payload).await?,
+        state
+            .product_service
+            .update_stock(product_id, payload)
+            .await?,
     ))
 }
 
@@ -103,7 +107,10 @@ pub async fn update_category(
 ) -> Result<impl IntoResponse, AppError> {
     require_product_manager(&headers, &state.jwt_secret)?;
     Ok(Json(
-        state.product_service.update_category(category_id, payload).await?,
+        state
+            .product_service
+            .update_category(category_id, payload)
+            .await?,
     ))
 }
 
@@ -126,9 +133,9 @@ fn require_product_manager(headers: &HeaderMap, jwt_secret: &str) -> Result<(), 
         .to_str()
         .map_err(|_| AppError::Unauthorized("Authorization header is invalid".into()))?;
 
-    let token = auth
-        .strip_prefix("Bearer ")
-        .ok_or_else(|| AppError::Unauthorized("Authorization header must use Bearer token".into()))?;
+    let token = auth.strip_prefix("Bearer ").ok_or_else(|| {
+        AppError::Unauthorized("Authorization header must use Bearer token".into())
+    })?;
 
     let claims = decode_jwt(token, jwt_secret)?;
 
