@@ -23,23 +23,13 @@ import { ShoppingCart, FavoriteBorder, Favorite, RateReview } from '@mui/icons-m
 import { useCart } from '../context/CartContext';
 import RatingsModal from '../components/RatingsModal';
 import ProductDetailModal from '../components/ProductDetailModal';
+import { addToWishlist, getWishlist, removeFromWishlist } from '../services/wishlistService';
+import { PRODUCT_IMAGES } from '../utils/productImages';
 import '../styles/HomePage.css';
-
-// Fallback images by product name
-const PRODUCT_IMAGES = {
-  'MacBook Pro 14"': 'https://cdsassets.apple.com/live/SZLF0YNV/images/sp/111902_mbp14-silver2.png',
-  'iPhone 15 Pro': 'https://cdsassets.apple.com/live/7WUAS350/images/tech-specs/iphone-15-pro-max.png',
-  'iPad Air': 'https://store.storeimages.cdn-apple.com/1/as-images.apple.com/is/ipad-air-finish-select-gallery-202405-13inch-blue-wifi?wid=5120&hei=2880&fmt=p-jpg&qlt=80&sp=yes&strip=yes&trim&ex=536&ey=402&align=center&resizesource&unsharp=1.5x1+0.7+0.02&cox=0&coy=0&cdx=536&cdy=402',
-  'AirPods Pro': 'https://productimages.hepsiburada.net/s/337/375-375/110000088116931.jpg',
-  'Dell XPS 13': 'https://m.media-amazon.com/images/I/710EGJBdIML._AC_UF894,1000_QL80_.jpg',
-  'Samsung Galaxy S24': 'https://assets.mmsrg.com/isr/166325/c1/-/ASSET_MMS_135895764?x=536&y=402&format=jpg&quality=80&sp=yes&strip=yes&trim&ex=536&ey=402&align=center&resizesource&unsharp=1.5x1+0.7+0.02&cox=0&coy=0&cdx=536&cdy=402',
-  'Magic Keyboard': 'https://cdn.vatanbilgisayar.com/Upload/PRODUCT/apple/thumb/148699-1_large.jpg',
-  'Lenovo ThinkPad': 'https://p1-ofp.static.pub/fes/cms/2023/02/13/5tlm0hunv3l71hzse5hlxsafgw4aw0954514.png',
-};
 
 const HomePage = ({ isLoggedIn }) => {
   const navigate = useNavigate();
-  const { addItem } = useCart();
+  const { addItem, getItem } = useCart();
   const [favorites, setFavorites] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState('popularity');
@@ -112,6 +102,35 @@ const HomePage = ({ isLoggedIn }) => {
     fetchData();
   }, []);
 
+  useEffect(() => {
+    if (!isLoggedIn) {
+      setFavorites([]);
+      return;
+    }
+
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const data = await getWishlist();
+        if (!cancelled) {
+          const productIds = Array.isArray(data?.items)
+            ? data.items.map((item) => item.product_id)
+            : [];
+          setFavorites(productIds);
+        }
+      } catch {
+        if (!cancelled) {
+          setFavorites([]);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isLoggedIn]);
+
   const categories = [
     { id: 0, name: 'All Products', value: 'all' },
     ...apiCategories.map(c => ({ id: c.category_id, name: c.category_name, value: c.category_name })),
@@ -132,8 +151,16 @@ const HomePage = ({ isLoggedIn }) => {
       return 0;
     });
 
-  const handleAddToCart = (product) => {
-    addItem(product, 1);
+  const handleAddToCart = async (product) => {
+    const existing = getItem(product.id);
+    if ((existing?.quantity ?? 0) >= product.stock) {
+      setSnackbarMessage(`Only ${product.stock} unit(s) available for ${product.name}.`);
+      setSnackbarSeverity('warning');
+      setSnackbarOpen(true);
+      return;
+    }
+
+    await addItem(product, 1);
     setSnackbarMessage(`${product.name} added to cart!`);
     setSnackbarSeverity('success');
     setSnackbarOpen(true);
@@ -143,11 +170,32 @@ const HomePage = ({ isLoggedIn }) => {
     setSnackbarOpen(false);
   };
 
-  const toggleFavorite = (productId) => {
-    if (favorites.includes(productId)) {
-      setFavorites(favorites.filter(id => id !== productId));
-    } else {
-      setFavorites([...favorites, productId]);
+  const toggleFavorite = async (productId) => {
+    if (!isLoggedIn) {
+      setSnackbarMessage('Sign in to save products to your wishlist.');
+      setSnackbarSeverity('info');
+      setSnackbarOpen(true);
+      return;
+    }
+
+    const isFavorite = favorites.includes(productId);
+
+    try {
+      if (isFavorite) {
+        await removeFromWishlist(productId);
+        setFavorites((prev) => prev.filter((id) => id !== productId));
+        setSnackbarMessage('Removed from wishlist.');
+      } else {
+        await addToWishlist(productId);
+        setFavorites((prev) => [...prev, productId]);
+        setSnackbarMessage('Added to wishlist.');
+      }
+      setSnackbarSeverity('success');
+      setSnackbarOpen(true);
+    } catch (err) {
+      setSnackbarMessage(err.message || 'Wishlist update failed.');
+      setSnackbarSeverity('error');
+      setSnackbarOpen(true);
     }
   };
 
@@ -314,7 +362,10 @@ const HomePage = ({ isLoggedIn }) => {
                     )}
                     <Button
                       size="small"
-                      onClick={() => toggleFavorite(product.id)}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        toggleFavorite(product.id);
+                      }}
                       sx={{ position: 'absolute', top: 10, left: 10, bgcolor: 'rgba(255,255,255,0.9)' }}
                     >
                       {favorites.includes(product.id) ? (

@@ -49,8 +49,8 @@ pub struct SignUpRequest {
     pub user_name: String,
     pub email: String,
     pub password: String,
-    pub tax_id: Option<String>,
-    pub home_address: Option<String>,
+    pub tax_id: String,
+    pub home_address: String,
 }
 
 /// Payload for `POST /api/auth/login`.

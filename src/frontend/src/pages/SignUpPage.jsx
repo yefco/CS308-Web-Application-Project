@@ -14,7 +14,7 @@ import {
   FormControlLabel,
   LinearProgress,
 } from '@mui/material';
-import { Visibility, VisibilityOff, Email, Lock, Person, LocationOn, Phone } from '@mui/icons-material';
+import { Visibility, VisibilityOff, Email, Lock, Person, LocationOn } from '@mui/icons-material';
 import '../styles/AuthPages.css';
 
 const SignUpPage = ({ onSignUpSuccess }) => {
@@ -22,7 +22,6 @@ const SignUpPage = ({ onSignUpSuccess }) => {
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
-    phone: '',
     address: '',
     password: '',
     confirmPassword: '',
@@ -48,12 +47,12 @@ const SignUpPage = ({ onSignUpSuccess }) => {
       newErrors.email = 'Email is invalid';
     }
 
-    if (!formData.phone.trim()) {
-      newErrors.phone = 'Phone number is required';
-    }
-
     if (!formData.address.trim()) {
       newErrors.address = 'Address is required';
+    }
+
+    if (!formData.taxId.trim()) {
+      newErrors.taxId = 'Tax ID is required';
     }
 
     if (!formData.password) {
@@ -114,8 +113,8 @@ const SignUpPage = ({ onSignUpSuccess }) => {
           user_name: formData.fullName,
           email: formData.email,
           password: formData.password,
-          tax_id: formData.taxId || null,
-          home_address: formData.address || null,
+          tax_id: formData.taxId.trim(),
+          home_address: formData.address.trim(),
         }),
       });
 
@@ -125,7 +124,7 @@ const SignUpPage = ({ onSignUpSuccess }) => {
         if (response.status === 409) {
           setGeneralError('An account with this email already exists.');
         } else {
-          setGeneralError(data.message || 'Registration failed. Please try again.');
+          setGeneralError(data.error || data.message || 'Registration failed. Please try again.');
         }
         return;
       }
@@ -220,27 +219,6 @@ const SignUpPage = ({ onSignUpSuccess }) => {
               }}
             />
 
-            {/* Phone */}
-            <TextField
-              fullWidth
-              label="Phone Number"
-              name="phone"
-              value={formData.phone}
-              onChange={handleChange}
-              error={!!errors.phone}
-              helperText={errors.phone}
-              variant="outlined"
-              margin="normal"
-              disabled={loading}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <Phone sx={{ color: '#3498db', mr: 1 }} />
-                  </InputAdornment>
-                ),
-              }}
-            />
-
             {/* Address */}
             <TextField
               fullWidth
@@ -267,14 +245,15 @@ const SignUpPage = ({ onSignUpSuccess }) => {
             {/* Tax ID */}
             <TextField
               fullWidth
-              label="Tax ID (Optional)"
+              label="Tax ID"
               name="taxId"
               value={formData.taxId}
               onChange={handleChange}
+              error={!!errors.taxId}
+              helperText={errors.taxId}
               variant="outlined"
               margin="normal"
               disabled={loading}
-              helperText="For business purposes"
             />
 
             {/* Password */}

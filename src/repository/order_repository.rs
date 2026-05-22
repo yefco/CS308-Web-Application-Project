@@ -62,6 +62,25 @@ pub async fn get_order_items(pool: &PgPool, order_id: i32) -> Result<Vec<OrderIt
     .await
 }
 
+pub async fn get_order_items_in_tx(
+    tx: &mut Transaction<'_, Postgres>,
+    order_id: i32,
+) -> Result<Vec<OrderItem>, sqlx::Error> {
+    sqlx::query_as::<_, OrderItem>(
+        r#"
+        SELECT oi.order_item_id, oi.order_id, oi.product_id, oi.quantity,
+               oi.unit_price::FLOAT8 AS unit_price, p.product_name
+        FROM order_items oi
+        JOIN products p ON p.product_id = oi.product_id
+        WHERE oi.order_id = $1
+        ORDER BY oi.order_item_id
+        "#,
+    )
+    .bind(order_id)
+    .fetch_all(&mut **tx)
+    .await
+}
+
 pub async fn list_user_orders(pool: &PgPool, user_id: i32) -> Result<Vec<Order>, sqlx::Error> {
     sqlx::query_as::<_, Order>(
         r#"
@@ -96,29 +115,54 @@ pub async fn find_user_order(
     .await
 }
 
-pub async fn find_order_by_id(pool: &PgPool, order_id: i32) -> Result<Option<Order>, sqlx::Error> {
+pub async fn find_order_for_update_in_tx(
+    tx: &mut Transaction<'_, Postgres>,
+    order_id: i32,
+) -> Result<Option<Order>, sqlx::Error> {
     sqlx::query_as::<_, Order>(
         r#"
         SELECT order_id, user_id, status, delivery_address,
                total_amount::FLOAT8 AS total_amount, created_at, updated_at
         FROM orders
         WHERE order_id = $1
+        FOR UPDATE
         "#,
     )
     .bind(order_id)
-    .fetch_optional(pool)
+    .fetch_optional(&mut **tx)
     .await
 }
 
-pub async fn update_order_status(
-    pool: &PgPool,
+pub async fn find_user_order_for_update_in_tx(
+    tx: &mut Transaction<'_, Postgres>,
+    user_id: i32,
     order_id: i32,
-    status: &OrderStatus,
 ) -> Result<Option<Order>, sqlx::Error> {
     sqlx::query_as::<_, Order>(
         r#"
+        SELECT order_id, user_id, status, delivery_address,
+               total_amount::FLOAT8 AS total_amount, created_at, updated_at
+        FROM orders
+        WHERE user_id = $1 AND order_id = $2
+        FOR UPDATE
+        "#,
+    )
+    .bind(user_id)
+    .bind(order_id)
+    .fetch_optional(&mut **tx)
+    .await
+}
+
+pub async fn update_order_status_in_tx(
+    tx: &mut Transaction<'_, Postgres>,
+    order_id: i32,
+    status: &OrderStatus,
+) -> Result<Order, sqlx::Error> {
+    sqlx::query_as::<_, Order>(
+        r#"
         UPDATE orders
-        SET status = $2
+        SET status = $2,
+            updated_at = NOW()
         WHERE order_id = $1
         RETURNING order_id, user_id, status, delivery_address,
                   total_amount::FLOAT8 AS total_amount, created_at, updated_at
@@ -126,7 +170,7 @@ pub async fn update_order_status(
     )
     .bind(order_id)
     .bind(status)
-    .fetch_optional(pool)
+    .fetch_one(&mut **tx)
     .await
 }
 
@@ -144,12 +188,14 @@ pub async fn list_all_orders(pool: &PgPool) -> Result<Vec<Order>, sqlx::Error> {
 }
 
 pub async fn has_purchased_product(
-    pool:       &PgPool,
-    user_id:    i32,
+    pool: &PgPool,
+    user_id: i32,
     product_id: i32,
 ) -> Result<bool, AppError> {
     #[derive(sqlx::FromRow)]
-    struct Exists { exists: Option<bool> }
+    struct Exists {
+        exists: Option<bool>,
+    }
 
     let row = sqlx::query_as::<_, Exists>(
         r#"
@@ -157,7 +203,9 @@ pub async fn has_purchased_product(
             SELECT 1
             FROM orders o
             JOIN order_items oi ON oi.order_id = o.order_id
-            WHERE o.user_id = $1 AND oi.product_id = $2
+            WHERE o.user_id = $1
+              AND oi.product_id = $2
+              AND o.status IN ('delivered', 'returned')
         ) AS exists
         "#,
     )

@@ -44,7 +44,10 @@ pub async fn get_user_review(
     Path(product_id): Path<i32>,
 ) -> Result<impl IntoResponse, AppError> {
     let user_id = extract_authenticated_user_id(&headers, &state.jwt_secret)?;
-    let response = state.review_service.get_user_review(product_id, user_id).await?;
+    let response = state
+        .review_service
+        .get_user_review(product_id, user_id)
+        .await?;
     Ok(Json(response))
 }
 
@@ -102,9 +105,9 @@ fn require_product_manager(headers: &HeaderMap, jwt_secret: &str) -> Result<(), 
         .to_str()
         .map_err(|_| AppError::Unauthorized("Authorization header is invalid".into()))?;
 
-    let token = auth_header
-        .strip_prefix("Bearer ")
-        .ok_or_else(|| AppError::Unauthorized("Authorization header must use Bearer token".into()))?;
+    let token = auth_header.strip_prefix("Bearer ").ok_or_else(|| {
+        AppError::Unauthorized("Authorization header must use Bearer token".into())
+    })?;
 
     let claims = decode_jwt(token, jwt_secret)?;
 

@@ -77,7 +77,13 @@ CREATE TABLE shopping_carts (
 );
 
 -- Create order_status enum
-CREATE TYPE order_status AS ENUM ('processing', 'in_transit', 'delivered');
+CREATE TYPE order_status AS ENUM (
+    'processing',
+    'in_transit',
+    'delivered',
+    'cancelled',
+    'returned'
+);
 
 -- Create orders table
 CREATE TABLE orders (
@@ -150,4 +156,25 @@ CREATE TABLE IF NOT EXISTS product_reviews (
     CONSTRAINT fk_review_product FOREIGN KEY (product_id) REFERENCES products(product_id) ON DELETE CASCADE,
     CONSTRAINT fk_review_user    FOREIGN KEY (user_id)    REFERENCES users(user_id)    ON DELETE CASCADE,
     CONSTRAINT uq_user_product_review UNIQUE (product_id, user_id)
+);
+
+-- Create wishlist_items table
+CREATE TABLE IF NOT EXISTS wishlist_items (
+    wishlist_item_id SERIAL PRIMARY KEY,
+    user_id INT NOT NULL,
+    product_id INT NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_wishlist_user
+        FOREIGN KEY (user_id)
+        REFERENCES users(user_id)
+        ON DELETE CASCADE,
+
+    CONSTRAINT fk_wishlist_product
+        FOREIGN KEY (product_id)
+        REFERENCES products(product_id)
+        ON DELETE CASCADE,
+
+    CONSTRAINT uq_wishlist_user_product
+        UNIQUE (user_id, product_id)
 );
