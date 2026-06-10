@@ -58,6 +58,11 @@ pub struct SetDiscountRequest {
 }
 
 #[derive(Debug, Deserialize)]
+pub struct SetPriceRequest {
+    pub price: f64,
+}
+
+#[derive(Debug, Deserialize)]
 pub struct UpdateStockRequest {
     pub stock_quantity: i32,
 }

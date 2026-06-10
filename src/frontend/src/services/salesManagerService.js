@@ -108,12 +108,15 @@ export async function getProducts() {
 
 export async function getRevenueData(startDate, endDate) {
   try {
+    // Uses /api/sales/invoices which returns { orders: [...] } — the shape
+    // both RevenueReportsTab and RevenueChartsTab expect.
+    // Query params are `from` and `to` as the backend DateRangeQuery struct defines.
     const params = new URLSearchParams({
-      from_date: startDate,
-      to_date: endDate,
+      from: startDate,
+      to: endDate,
     });
 
-    const res = await fetch(`${API_BASE}/sales/revenue?${params}`, {
+    const res = await fetch(`${API_BASE}/sales/invoices?${params}`, {
       method: 'GET',
       headers: authHeaders(),
     });
@@ -125,7 +128,6 @@ export async function getRevenueData(startDate, endDate) {
     return await res.json();
   } catch (error) {
     console.error('Error fetching revenue data:', error);
-    // Fallback: return empty orders array if endpoint not implemented
     return { orders: [] };
   }
 }
