@@ -19,6 +19,8 @@ mod models;
 mod repository;
 mod routes;
 mod services;
+#[cfg(test)]
+mod test_batch_2;
 mod utils;
 
 use std::net::SocketAddr;
