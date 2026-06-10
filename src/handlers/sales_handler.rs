@@ -166,7 +166,7 @@ pub async fn get_revenue_report(
             COALESCE(SUM(total_amount), 0)::FLOAT8 AS revenue,
             COUNT(*)::BIGINT AS order_count
         FROM orders
-        WHERE status NOT IN ('cancelled')
+        WHERE status IN ('processing', 'in_transit', 'delivered')
           AND created_at::DATE >= $1::DATE
           AND created_at::DATE <= $2::DATE
         "#,
