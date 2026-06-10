@@ -23,6 +23,8 @@ mod services;
 mod test_batch_2;
 #[cfg(test)]
 mod test_batch_3;
+#[cfg(test)]
+mod test_batch_4;
 mod utils;
 
 use std::net::SocketAddr;
