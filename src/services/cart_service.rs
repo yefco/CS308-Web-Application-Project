@@ -1,7 +1,7 @@
 use crate::models::cart::{
     AddItemRequest, CartOwner, CartResponse, MergeCartRequest, UpdateQuantityRequest,
 };
-use crate::repository::cart_repository;
+use crate::repository::{cart_repository, product_repository};
 use crate::utils::errors::AppError;
 use sqlx::PgPool;
 
@@ -40,6 +40,16 @@ impl CartService {
         if req.quantity <= 0 {
             return Err(AppError::BadRequest("Quantity must be positive".into()));
         }
+        let product = product_repository::find_product(&self.pool, req.product_id)
+            .await
+            .map_err(AppError::from)?
+            .ok_or_else(|| AppError::NotFound("Product not found".into()))?;
+        if req.quantity > product.stock_quantity {
+            return Err(AppError::Conflict(format!(
+                "Only {} unit(s) available for '{}'",
+                product.stock_quantity, product.product_name
+            )));
+        }
         let cart_id = self.cart_id(&owner).await?;
         cart_repository::upsert_item(&self.pool, cart_id, req.product_id, req.quantity).await?;
         let items = cart_repository::get_cart_items(&self.pool, cart_id).await?;
@@ -54,6 +64,16 @@ impl CartService {
     ) -> Result<CartResponse, AppError> {
         if req.quantity <= 0 {
             return Err(AppError::BadRequest("Quantity must be positive".into()));
+        }
+        let product = product_repository::find_product(&self.pool, product_id)
+            .await
+            .map_err(AppError::from)?
+            .ok_or_else(|| AppError::NotFound("Product not found".into()))?;
+        if req.quantity > product.stock_quantity {
+            return Err(AppError::Conflict(format!(
+                "Only {} unit(s) available for '{}'",
+                product.stock_quantity, product.product_name
+            )));
         }
         let cart_id = self.cart_id(&owner).await?;
         let found =
