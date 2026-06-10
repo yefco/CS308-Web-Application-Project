@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Button,
@@ -14,127 +14,128 @@ import {
   TableHead,
   TableRow,
   Paper,
-  IconButton,
   Snackbar,
   Alert,
   CircularProgress,
   Chip,
   Typography,
+  InputAdornment,
 } from '@mui/material';
-import { Delete as DeleteIcon, Edit as EditIcon, Add as AddIcon } from '@mui/icons-material';
 import {
-  getDiscounts,
-  createDiscount,
-  updateDiscount,
-  deleteDiscount,
-  getProducts,
-} from '../services/salesManagerService';
+  LocalOffer as DiscountIcon,
+  AttachMoney as PriceIcon,
+  Refresh as RefreshIcon,
+} from '@mui/icons-material';
+
+const API_BASE = '/api';
+
+function authHeaders() {
+  const token = localStorage.getItem('authToken');
+  return {
+    'Content-Type': 'application/json',
+    Authorization: `Bearer ${token}`,
+  };
+}
 
 function DiscountManagementTab({ refreshTrigger }) {
-  const [discounts, setDiscounts] = useState([]);
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingDiscount, setEditingDiscount] = useState(null);
   const [snack, setSnack] = useState({ open: false, message: '', severity: 'success' });
-  const [form, setForm] = useState({
-    product_id: '',
-    discount_percentage: '',
-    start_date: '',
-    end_date: '',
-  });
 
-  // Load discounts and products
-  useEffect(() => {
-    loadData();
-  }, [refreshTrigger]);
+  // Shared dialog state — type is 'discount' | 'price'
+  const [dialog, setDialog] = useState({ open: false, type: null, product: null });
+  const [inputValue, setInputValue] = useState('');
+  const [saving, setSaving] = useState(false);
 
-  const loadData = async () => {
+  const loadProducts = useCallback(async () => {
+    setLoading(true);
     try {
-      setLoading(true);
-      const [discountsData, productsData] = await Promise.all([
-        getDiscounts(),
-        getProducts(),
-      ]);
-      setDiscounts(Array.isArray(discountsData) ? discountsData : discountsData?.discounts || []);
-      setProducts(Array.isArray(productsData) ? productsData : productsData?.products || []);
+      const res = await fetch(`${API_BASE}/products`);
+      if (!res.ok) throw new Error('Failed to load products');
+      const data = await res.json();
+      setProducts(Array.isArray(data) ? data : data.products ?? []);
     } catch (err) {
-      setSnack({ open: true, message: err.message || 'Failed to load data', severity: 'error' });
+      setSnack({ open: true, message: err.message || 'Failed to load products', severity: 'error' });
     } finally {
       setLoading(false);
     }
+  }, []);
+
+  useEffect(() => {
+    loadProducts();
+  }, [loadProducts, refreshTrigger]);
+
+  const openDialog = (type, product) => {
+    setDialog({ open: true, type, product });
+    setInputValue(
+      type === 'discount'
+        ? String(parseFloat(product.discount_percent ?? 0))
+        : String(parseFloat(product.price ?? 0))
+    );
   };
 
-  const handleOpenDialog = (discount = null) => {
-    if (discount) {
-      setEditingDiscount(discount);
-      setForm({
-        product_id: discount.product_id,
-        discount_percentage: discount.discount_percentage,
-        start_date: discount.start_date?.split('T')[0] || '',
-        end_date: discount.end_date?.split('T')[0] || '',
-      });
-    } else {
-      setEditingDiscount(null);
-      setForm({ product_id: '', discount_percentage: '', start_date: '', end_date: '' });
-    }
-    setDialogOpen(true);
-  };
-
-  const handleCloseDialog = () => {
-    setDialogOpen(false);
-    setEditingDiscount(null);
-    setForm({ product_id: '', discount_percentage: '', start_date: '', end_date: '' });
+  const closeDialog = () => {
+    setDialog({ open: false, type: null, product: null });
+    setInputValue('');
   };
 
   const handleSave = async () => {
-    if (!form.product_id || !form.discount_percentage || !form.start_date || !form.end_date) {
-      setSnack({ open: true, message: 'Please fill all fields', severity: 'error' });
+    const { type, product } = dialog;
+    const value = parseFloat(inputValue);
+
+    if (isNaN(value) || value < 0) {
+      setSnack({ open: true, message: 'Please enter a valid non-negative number', severity: 'error' });
+      return;
+    }
+    if (type === 'discount' && value > 100) {
+      setSnack({ open: true, message: 'Discount cannot exceed 100%', severity: 'error' });
       return;
     }
 
+    setSaving(true);
     try {
-      if (editingDiscount) {
-        await updateDiscount(editingDiscount.discount_id, form);
-        setSnack({ open: true, message: 'Discount updated successfully', severity: 'success' });
-      } else {
-        await createDiscount(form);
-        setSnack({ open: true, message: 'Discount created successfully', severity: 'success' });
+      const endpoint = type === 'discount'
+        ? `${API_BASE}/products/${product.product_id}/discount`
+        : `${API_BASE}/products/${product.product_id}/price`;
+
+      const body = type === 'discount'
+        ? { discount_percent: value }
+        : { price: value };
+
+      const res = await fetch(endpoint, {
+        method: 'PATCH',
+        headers: authHeaders(),
+        body: JSON.stringify(body),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || err.error || res.statusText);
       }
-      handleCloseDialog();
-      loadData();
+
+      const updated = await res.json();
+
+      // Patch the product row in state so the new price appears immediately
+      setProducts((prev) =>
+        prev.map((p) => (p.product_id === product.product_id ? updated : p))
+      );
+
+      const label = type === 'discount'
+        ? `Discount set to ${value}% for "${product.product_name}"`
+        : `Price updated to $${value.toFixed(2)} for "${product.product_name}"`;
+
+      setSnack({ open: true, message: label, severity: 'success' });
+      closeDialog();
     } catch (err) {
-      setSnack({ open: true, message: err.message || 'Failed to save', severity: 'error' });
+      setSnack({ open: true, message: err.message || 'Save failed', severity: 'error' });
+    } finally {
+      setSaving(false);
     }
-  };
-
-  const handleDelete = async (discountId) => {
-    if (window.confirm('Are you sure you want to delete this discount?')) {
-      try {
-        await deleteDiscount(discountId);
-        setSnack({ open: true, message: 'Discount deleted successfully', severity: 'success' });
-        loadData();
-      } catch (err) {
-        setSnack({ open: true, message: err.message || 'Failed to delete', severity: 'error' });
-      }
-    }
-  };
-
-  const getProductName = (productId) => {
-    const product = products.find((p) => p.product_id === productId);
-    return product?.product_name || `Product #${productId}`;
-  };
-
-  const isDiscountActive = (discount) => {
-    const now = new Date();
-    const start = new Date(discount.start_date);
-    const end = new Date(discount.end_date);
-    return now >= start && now <= end;
   };
 
   if (loading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', py: 5 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
         <CircularProgress />
       </Box>
     );
@@ -144,135 +145,165 @@ function DiscountManagementTab({ refreshTrigger }) {
     <>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Typography variant="h6" sx={{ fontWeight: 600, color: '#2c3e50' }}>
-          Active Discounts ({discounts.length})
+          Products — {products.length} total
         </Typography>
         <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={() => handleOpenDialog()}
-          sx={{ bgcolor: '#27ae60', '&:hover': { bgcolor: '#229954' } }}
+          variant="outlined"
+          startIcon={<RefreshIcon />}
+          onClick={loadProducts}
+          size="small"
         >
-          New Discount
+          Refresh
         </Button>
       </Box>
 
-      {discounts.length === 0 ? (
-        <Alert severity="info">No discounts yet. Create one to get started!</Alert>
+      {products.length === 0 ? (
+        <Alert severity="info">No products found.</Alert>
       ) : (
         <TableContainer component={Paper} sx={{ boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-          <Table>
-            <TableHead sx={{ bgcolor: '#f8f9fa' }}>
+          <Table size="small">
+            <TableHead sx={{ bgcolor: '#2c3e50' }}>
               <TableRow>
-                <TableCell sx={{ fontWeight: 600, color: '#2c3e50' }}>Product</TableCell>
-                <TableCell sx={{ fontWeight: 600, color: '#2c3e50' }} align="right">
-                  Discount %
-                </TableCell>
-                <TableCell sx={{ fontWeight: 600, color: '#2c3e50' }}>Start Date</TableCell>
-                <TableCell sx={{ fontWeight: 600, color: '#2c3e50' }}>End Date</TableCell>
-                <TableCell sx={{ fontWeight: 600, color: '#2c3e50' }}>Status</TableCell>
-                <TableCell sx={{ fontWeight: 600, color: '#2c3e50' }} align="center">
-                  Actions
-                </TableCell>
+                {['ID', 'Name', 'Base Price', 'Discount', 'Sale Price', 'Actions'].map((h) => (
+                  <TableCell key={h} sx={{ color: '#fff', fontWeight: 700 }}>
+                    {h}
+                  </TableCell>
+                ))}
               </TableRow>
             </TableHead>
+
             <TableBody>
-              {discounts.map((discount) => (
-                <TableRow key={discount.discount_id} hover>
-                  <TableCell sx={{ color: '#2c3e50' }}>
-                    {getProductName(discount.product_id)}
-                  </TableCell>
-                  <TableCell align="right" sx={{ fontWeight: 600, color: '#e74c3c' }}>
-                    -{discount.discount_percentage}%
-                  </TableCell>
-                  <TableCell sx={{ color: '#7f8c8d', fontSize: 14 }}>
-                    {new Date(discount.start_date).toLocaleDateString()}
-                  </TableCell>
-                  <TableCell sx={{ color: '#7f8c8d', fontSize: 14 }}>
-                    {new Date(discount.end_date).toLocaleDateString()}
-                  </TableCell>
-                  <TableCell>
-                    <Chip
-                      label={isDiscountActive(discount) ? 'Active' : 'Inactive'}
-                      color={isDiscountActive(discount) ? 'success' : 'default'}
-                      size="small"
-                      sx={{ fontWeight: 600 }}
-                    />
-                  </TableCell>
-                  <TableCell align="center">
-                    <IconButton
-                      size="small"
-                      onClick={() => handleOpenDialog(discount)}
-                      sx={{ color: '#3498db' }}
-                    >
-                      <EditIcon />
-                    </IconButton>
-                    <IconButton
-                      size="small"
-                      onClick={() => handleDelete(discount.discount_id)}
-                      sx={{ color: '#e74c3c' }}
-                    >
-                      <DeleteIcon />
-                    </IconButton>
-                  </TableCell>
-                </TableRow>
-              ))}
+              {products.map((p) => {
+                const basePrice = parseFloat(p.price ?? 0);
+                const discountPct = parseFloat(p.discount_percent ?? 0);
+                const salePrice = p.discounted_price != null
+                  ? parseFloat(p.discounted_price)
+                  : basePrice * (1 - discountPct / 100);
+
+                return (
+                  <TableRow key={p.product_id} hover>
+                    <TableCell sx={{ color: '#7f8c8d' }}>{p.product_id}</TableCell>
+                    <TableCell sx={{ fontWeight: 500 }}>{p.product_name}</TableCell>
+
+                    <TableCell sx={{ fontWeight: 600 }}>${basePrice.toFixed(2)}</TableCell>
+
+                    <TableCell>
+                      {discountPct > 0 ? (
+                        <Chip
+                          label={`-${discountPct}%`}
+                          color="error"
+                          size="small"
+                          sx={{ fontWeight: 700 }}
+                        />
+                      ) : (
+                        <Chip label="None" size="small" variant="outlined" />
+                      )}
+                    </TableCell>
+
+                    <TableCell>
+                      <Typography
+                        sx={{
+                          fontWeight: 700,
+                          color: discountPct > 0 ? '#e74c3c' : '#27ae60',
+                        }}
+                      >
+                        ${salePrice.toFixed(2)}
+                      </Typography>
+                    </TableCell>
+
+                    <TableCell>
+                      <Box sx={{ display: 'flex', gap: 1 }}>
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          startIcon={<PriceIcon />}
+                          onClick={() => openDialog('price', p)}
+                          sx={{ color: '#3498db', borderColor: '#3498db', whiteSpace: 'nowrap' }}
+                        >
+                          Set Price
+                        </Button>
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          startIcon={<DiscountIcon />}
+                          onClick={() => openDialog('discount', p)}
+                          sx={{ color: '#e74c3c', borderColor: '#e74c3c', whiteSpace: 'nowrap' }}
+                        >
+                          Set Discount
+                        </Button>
+                      </Box>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </TableContainer>
       )}
 
-      {/* Dialog */}
-      <Dialog open={dialogOpen} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ fontWeight: 600, bgcolor: '#f8f9fa' }}>
-          {editingDiscount ? 'Edit Discount' : 'Create New Discount'}
+      {/* Shared dialog */}
+      <Dialog open={dialog.open} onClose={saving ? undefined : closeDialog} maxWidth="xs" fullWidth>
+        <DialogTitle sx={{ bgcolor: dialog.type === 'price' ? '#3498db' : '#e74c3c', color: '#fff' }}>
+          {dialog.type === 'price' ? 'Set Price' : 'Set Discount'}
+          {dialog.product ? ` — ${dialog.product.product_name}` : ''}
         </DialogTitle>
-        <DialogContent sx={{ pt: 3, display: 'flex', flexDirection: 'column', gap: 2 }}>
-          <TextField
-            select
-            label="Product"
-            value={form.product_id}
-            onChange={(e) => setForm({ ...form, product_id: parseInt(e.target.value) })}
-            fullWidth
-            SelectProps={{
-              native: true,
+
+        <DialogContent sx={{ pt: 3 }}>
+          {dialog.type === 'price' ? (
+            <TextField
+              fullWidth
+              label="New Price"
+              type="number"
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              inputProps={{ min: 0, step: '0.01' }}
+              InputProps={{
+                startAdornment: <InputAdornment position="start">$</InputAdornment>,
+              }}
+              autoFocus
+            />
+          ) : (
+            <>
+              <TextField
+                fullWidth
+                label="Discount Percent (0 to remove)"
+                type="number"
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                inputProps={{ min: 0, max: 100, step: '1' }}
+                InputProps={{
+                  endAdornment: <InputAdornment position="end">%</InputAdornment>,
+                }}
+                autoFocus
+              />
+              {dialog.product && parseFloat(inputValue) > 0 && !isNaN(parseFloat(inputValue)) && (
+                <Alert severity="info" sx={{ mt: 2 }}>
+                  Sale price will be{' '}
+                  <strong>
+                    ${(parseFloat(dialog.product.price) * (1 - parseFloat(inputValue) / 100)).toFixed(2)}
+                  </strong>
+                  {'. '}
+                  Wishlist owners will be notified automatically.
+                </Alert>
+              )}
+            </>
+          )}
+        </DialogContent>
+
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={closeDialog} disabled={saving}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleSave}
+            variant="contained"
+            disabled={saving}
+            sx={{
+              bgcolor: dialog.type === 'price' ? '#3498db' : '#e74c3c',
+              '&:hover': { bgcolor: dialog.type === 'price' ? '#2980b9' : '#c0392b' },
             }}
           >
-            <option value="">Select a product</option>
-            {products.map((p) => (
-              <option key={p.product_id} value={p.product_id}>
-                {p.product_name}
-              </option>
-            ))}
-          </TextField>
-          <TextField
-            label="Discount Percentage"
-            type="number"
-            value={form.discount_percentage}
-            onChange={(e) => setForm({ ...form, discount_percentage: parseInt(e.target.value) })}
-            inputProps={{ min: 1, max: 100 }}
-            fullWidth
-          />
-          <TextField
-            label="Start Date"
-            type="date"
-            value={form.start_date}
-            onChange={(e) => setForm({ ...form, start_date: e.target.value })}
-            InputLabelProps={{ shrink: true }}
-            fullWidth
-          />
-          <TextField
-            label="End Date"
-            type="date"
-            value={form.end_date}
-            onChange={(e) => setForm({ ...form, end_date: e.target.value })}
-            InputLabelProps={{ shrink: true }}
-            fullWidth
-          />
-        </DialogContent>
-        <DialogActions sx={{ p: 2, bgcolor: '#f8f9fa' }}>
-          <Button onClick={handleCloseDialog}>Cancel</Button>
-          <Button onClick={handleSave} variant="contained" sx={{ bgcolor: '#27ae60' }}>
-            Save
+            {saving ? 'Saving…' : 'Save'}
           </Button>
         </DialogActions>
       </Dialog>
@@ -283,7 +314,9 @@ function DiscountManagementTab({ refreshTrigger }) {
         onClose={() => setSnack({ ...snack, open: false })}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
       >
-        <Alert severity={snack.severity}>{snack.message}</Alert>
+        <Alert severity={snack.severity} onClose={() => setSnack({ ...snack, open: false })}>
+          {snack.message}
+        </Alert>
       </Snackbar>
     </>
   );

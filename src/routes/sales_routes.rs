@@ -8,6 +8,12 @@ use crate::AppState;
 
 pub fn routes() -> Router<AppState> {
     Router::new()
+        // Price
+        .route(
+            "/api/products/:id/price",
+            patch(sales_handler::set_price),
+        )
+
         // Discount
         .route(
             "/api/products/:id/discount",

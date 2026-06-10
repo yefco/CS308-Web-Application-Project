@@ -204,6 +204,25 @@ pub async fn update_stock(
     .await
 }
 
+pub async fn set_price(
+    pool: &PgPool,
+    product_id: i32,
+    price: f64,
+) -> Result<Option<Product>, sqlx::Error> {
+    sqlx::query_as::<_, Product>(&format!(
+        r#"
+        UPDATE products
+        SET price = $2
+        WHERE product_id = $1
+        RETURNING {PRODUCT_COLS}
+        "#
+    ))
+    .bind(product_id)
+    .bind(price)
+    .fetch_optional(pool)
+    .await
+}
+
 pub async fn set_discount(
     pool: &PgPool,
     product_id: i32,
