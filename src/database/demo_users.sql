@@ -3,7 +3,7 @@
 -- =============================================================
 -- Run AFTER schema.sql and seed.sql.
 -- Password for all accounts: demo1234
--- Hash generated with bcrypt cost 12.
+-- Hash generated with  bcrypt cost 12.
 -- =============================================================
 
 INSERT INTO users (user_id, user_name, email, password_hash, role, home_address)
