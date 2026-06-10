@@ -64,6 +64,14 @@ const ProfilePage = ({ isLoggedIn }) => {
             <Grid container spacing={3}>
               <Grid item xs={12} sm={6}>
                 <Typography variant="caption" sx={{ color: '#7f8c8d', textTransform: 'uppercase' }}>
+                  User ID
+                </Typography>
+                <Typography sx={{ fontWeight: 600, color: '#2c3e50' }}>
+                  {valueOrDash(user.user_id)}
+                </Typography>
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <Typography variant="caption" sx={{ color: '#7f8c8d', textTransform: 'uppercase' }}>
                   Name
                 </Typography>
                 <Typography sx={{ fontWeight: 600, color: '#2c3e50' }}>
