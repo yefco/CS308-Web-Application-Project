@@ -320,6 +320,19 @@ pub async fn approve_return(
             .await?
             .ok_or_else(|| AppError::NotFound("Return request not found".into()))?;
 
+    let msg = format!(
+        "Your return request for \"{}\" has been approved. A refund of ${:.2} will be processed.",
+        req.product_name, req.refund_amount
+    );
+    notification_repository::insert_notification(
+        &state.pool,
+        req.user_id,
+        Some(req.product_id),
+        &msg,
+    )
+    .await
+    .ok();
+
     use crate::models::return_request::ReturnRequestResponse;
     Ok(Json(ReturnRequestResponse::from(updated)))
 }
