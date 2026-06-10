@@ -33,7 +33,7 @@ function SalesManagerPage({ isLoggedIn }) {
     // Check if user is sales_manager
     try {
       const userData = JSON.parse(localStorage.getItem('userData') || '{}');
-      if (userData.role !== 'sales_manager' && userData.role !== 'SalesManager') {
+      if (userData.role !== 'sales_manager' && userData.role !== 'SalesManager' && userData.role !== 'salesmanager') {
         navigate('/');
       }
     } catch {

@@ -85,7 +85,6 @@ function AppContent() {
           <Route path="/sales-manager" element={<SalesManagerPage isLoggedIn={isLoggedIn} />} />
           <Route path="/product-manager/comment-approval" element={<CommentApprovalPage />} />
           <Route path="/delivery" element={<DeliveryPage />} />
-          <Route path="/sales-manager" element={<SalesManagerPage />} />
         </Routes>
       </Box>
     </Box>

@@ -79,7 +79,7 @@ const DeliveryPage = () => {
     if (!raw) { navigate('/login'); return; }
     try {
       const user = JSON.parse(raw);
-      if (user.role !== 'sales_manager' && user.role !== 'SalesManager') {
+      if (user.role !== 'sales_manager' && user.role !== 'SalesManager' && user.role !== 'product_manager' && user.role !== 'ProductManager' && user.role !== 'productmanager') {
         navigate('/');
       }
     } catch {
