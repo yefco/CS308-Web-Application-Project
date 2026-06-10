@@ -265,6 +265,7 @@ pub async fn list_invoices(
 
         responses.push(OrderResponse {
             order_id: order.order_id,
+            user_id: order.user_id,
             status: order.status,
             delivery_address: order.delivery_address,
             total_amount: order.total_amount,

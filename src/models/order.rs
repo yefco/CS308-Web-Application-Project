@@ -58,6 +58,7 @@ pub struct OrderItemResponse {
 #[derive(Debug, Serialize)]
 pub struct OrderResponse {
     pub order_id: i32,
+    pub user_id: i32,
     pub status: OrderStatus,
     pub delivery_address: String,
     pub total_amount: f64,
