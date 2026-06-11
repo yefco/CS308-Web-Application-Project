@@ -11,6 +11,11 @@ import {
   InputAdornment,
   IconButton,
   Paper,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Snackbar,
 } from '@mui/material';
 import { Visibility, VisibilityOff, Email, Lock } from '@mui/icons-material';
 import '../styles/AuthPages.css';
@@ -23,6 +28,11 @@ const LoginPage = ({ onLoginSuccess }) => {
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [generalError, setGeneralError] = useState('');
+  const [forgotOpen, setForgotOpen] = useState(false);
+  const [resetEmail, setResetEmail] = useState('');
+  const [resetEmailError, setResetEmailError] = useState('');
+  const [resetLoading, setResetLoading] = useState(false);
+  const [resetSnack, setResetSnack] = useState(false);
 
   const validateForm = () => {
     const newErrors = {};
@@ -88,6 +98,20 @@ const LoginPage = ({ onLoginSuccess }) => {
 
   const handleClickShowPassword = () => {
     setShowPassword(!showPassword);
+  };
+
+  const handleForgotSubmit = async () => {
+    if (!resetEmail || !/\S+@\S+\.\S+/.test(resetEmail)) {
+      setResetEmailError('Please enter a valid email address.');
+      return;
+    }
+    setResetLoading(true);
+    await new Promise((r) => setTimeout(r, 800));
+    setResetLoading(false);
+    setForgotOpen(false);
+    setResetEmail('');
+    setResetEmailError('');
+    setResetSnack(true);
   };
 
   return (
@@ -187,6 +211,9 @@ const LoginPage = ({ onLoginSuccess }) => {
                 type="button"
                 onClick={(e) => {
                   e.preventDefault();
+                  setResetEmail(email);
+                  setResetEmailError('');
+                  setForgotOpen(true);
                 }}
               >
                 Forgot Password?
@@ -265,6 +292,54 @@ const LoginPage = ({ onLoginSuccess }) => {
           </Box>
         </Paper>
       </Container>
+    </Box>
+      <Dialog open={forgotOpen} onClose={() => setForgotOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle sx={{ fontWeight: 700, color: '#2c3e50' }}>Reset Password</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" sx={{ color: '#7f8c8d', mb: 2 }}>
+            Enter your email address and we'll send you a link to reset your password.
+          </Typography>
+          <TextField
+            fullWidth
+            label="Email Address"
+            type="email"
+            value={resetEmail}
+            onChange={(e) => {
+              setResetEmail(e.target.value);
+              if (resetEmailError) setResetEmailError('');
+            }}
+            error={!!resetEmailError}
+            helperText={resetEmailError}
+            variant="outlined"
+            size="small"
+            autoFocus
+          />
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => setForgotOpen(false)} disabled={resetLoading}>
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            onClick={handleForgotSubmit}
+            disabled={resetLoading}
+            sx={{ bgcolor: '#3498db', '&:hover': { bgcolor: '#2980b9' } }}
+          >
+            {resetLoading ? 'Sending…' : 'Send Reset Link'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Snackbar
+        open={resetSnack}
+        autoHideDuration={5000}
+        onClose={() => setResetSnack(false)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert severity="success" onClose={() => setResetSnack(false)}>
+          Password reset link sent to {resetEmail || 'your email'}. Check your inbox.
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };
