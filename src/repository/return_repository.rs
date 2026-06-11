@@ -17,15 +17,14 @@ pub async fn create_return_request(
             SET status = 'pending', refund_amount = EXCLUDED.refund_amount,
                 resolved_at = NULL
         RETURNING
-            rr.request_id, rr.order_id, rr.order_item_id, rr.user_id,
-            (SELECT product_id FROM order_items WHERE order_item_id = rr.order_item_id) AS product_id,
+            return_requests.request_id, return_requests.order_id,
+            return_requests.order_item_id, return_requests.user_id,
+            (SELECT product_id FROM order_items WHERE order_item_id = return_requests.order_item_id) AS product_id,
             (SELECT p.product_name FROM order_items oi JOIN products p ON p.product_id = oi.product_id
-             WHERE oi.order_item_id = rr.order_item_id) AS product_name,
-            (SELECT quantity FROM order_items WHERE order_item_id = rr.order_item_id) AS quantity,
-            rr.refund_amount::FLOAT8 AS refund_amount,
-            rr.status, rr.requested_at, rr.resolved_at
-        FROM return_requests rr
-        WHERE rr.order_item_id = $2
+             WHERE oi.order_item_id = return_requests.order_item_id) AS product_name,
+            (SELECT quantity FROM order_items WHERE order_item_id = return_requests.order_item_id) AS quantity,
+            return_requests.refund_amount::FLOAT8 AS refund_amount,
+            return_requests.status, return_requests.requested_at, return_requests.resolved_at
         "#,
     )
     .bind(order_id)
@@ -102,6 +101,23 @@ pub async fn update_return_request_status(
     .bind(status)
     .fetch_optional(pool)
     .await
+}
+
+/// Marks all pending return requests for an order as rejected.
+/// Called when the customer does a whole-order return so the manager
+/// doesn't see stale item-level requests for the same order.
+pub async fn cancel_pending_requests_for_order(
+    pool: &PgPool,
+    order_id: i32,
+) -> Result<(), sqlx::Error> {
+    sqlx::query(
+        "UPDATE return_requests SET status = 'rejected', resolved_at = NOW()
+         WHERE order_id = $1 AND status = 'pending'",
+    )
+    .bind(order_id)
+    .execute(pool)
+    .await?;
+    Ok(())
 }
 
 pub async fn get_order_item_for_return(

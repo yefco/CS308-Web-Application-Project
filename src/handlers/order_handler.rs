@@ -88,14 +88,30 @@ pub async fn request_item_return(
                 )
             })?;
 
+    // Block duplicate requests — only allow a new request if the previous one was rejected
+    let existing_status: Option<String> = sqlx::query_scalar(
+        "SELECT status FROM return_requests WHERE order_item_id = $1",
+    )
+    .bind(item_id)
+    .fetch_optional(&state.pool)
+    .await
+    .map_err(AppError::from)?;
+
+    if let Some(ref status) = existing_status {
+        if status != "rejected" {
+            return Err(AppError::Conflict(format!(
+                "A return request for this item is already {}",
+                status
+            )));
+        }
+    }
+
     let refund_amount = unit_price * qty as f64;
     let req =
         return_repository::create_return_request(&state.pool, order_id, item_id, user_id, refund_amount)
             .await
             .map_err(AppError::from)?;
 
-    // Notify the sales manager — find SM user ids
-    // For demo we just log; in production we'd query for users with salesmanager role
     tracing::info!(
         "📦 Return request #{} created: user_id={} product_id={} refund=${:.2}",
         req.request_id,

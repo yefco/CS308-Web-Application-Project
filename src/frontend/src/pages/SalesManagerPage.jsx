@@ -28,6 +28,7 @@ import {
 import DiscountManagementTab from '../components/DiscountManagementTab';
 import RevenueReportsTab from '../components/RevenueReportsTab';
 import RevenueChartsTab from '../components/RevenueChartsTab';
+import ReturnRequestsTab from '../components/ReturnRequestsTab';
 import '../styles/SalesManagerPage.css';
 
 function authHeaders() {
@@ -220,10 +221,26 @@ function SalesManagerPage({ isLoggedIn }) {
               },
             }}
           >
-            <Tab icon={<DiscountIcon sx={{ mr: 1 }} />} iconPosition="start" label="Discount Management" />
-            <Tab icon={<RevenueIcon sx={{ mr: 1 }} />} iconPosition="start" label="Revenue Reports" />
-            <Tab icon={<ChartIcon sx={{ mr: 1 }} />} iconPosition="start" label="Analytics & Charts" />
-            <Tab icon={<ReturnIcon sx={{ mr: 1 }} />} iconPosition="start" label="Return Requests" />
+            <Tab
+              icon={<DiscountIcon sx={{ mr: 1 }} />}
+              iconPosition="start"
+              label="Discount Management"
+            />
+            <Tab
+              icon={<RevenueIcon sx={{ mr: 1 }} />}
+              iconPosition="start"
+              label="Revenue Reports"
+            />
+            <Tab
+              icon={<ChartIcon sx={{ mr: 1 }} />}
+              iconPosition="start"
+              label="Analytics & Charts"
+            />
+            <Tab
+              icon={<ReturnIcon sx={{ mr: 1 }} />}
+              iconPosition="start"
+              label="Return Requests"
+            />
           </Tabs>
 
           {/* Tab Content */}
@@ -237,7 +254,9 @@ function SalesManagerPage({ isLoggedIn }) {
             {activeTab === 2 && (
               <RevenueChartsTab onRefresh={handleRefresh} refreshTrigger={refreshTrigger} />
             )}
-            {activeTab === 3 && <ReturnRequestsTab />}
+            {activeTab === 3 && (
+              <ReturnRequestsTab refreshTrigger={refreshTrigger} />
+            )}
           </Box>
         </Box>
       </Container>

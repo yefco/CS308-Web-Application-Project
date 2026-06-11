@@ -6,7 +6,7 @@ use crate::models::order::{
     Order, OrderItem, OrderItemResponse, OrderResponse, OrderStatus, OrdersResponse,
     PlaceOrderRequest,
 };
-use crate::repository::{cart_repository, order_repository, product_repository, user_repository};
+use crate::repository::{cart_repository, order_repository, product_repository, return_repository, user_repository};
 use crate::utils::errors::AppError;
 
 #[derive(Clone)]
@@ -266,6 +266,13 @@ impl OrderService {
             order_repository::update_order_status_in_tx(&mut tx, order_id, &OrderStatus::Returned)
                 .await?;
         tx.commit().await?;
+
+        // Cancel any pending item-level return requests so the sales manager
+        // doesn't see stale requests for an already-returned order.
+        return_repository::cancel_pending_requests_for_order(&self.pool, order_id).await?;
+
+        // Credit the full order amount to the customer's balance.
+        user_repository::credit_balance(&self.pool, user_id, updated_order.total_amount).await?;
 
         Ok(Self::build_order_response(
             updated_order,

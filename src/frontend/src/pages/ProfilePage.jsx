@@ -72,6 +72,14 @@ const ProfilePage = ({ isLoggedIn }) => {
               </Grid>
               <Grid item xs={12} sm={6}>
                 <Typography variant="caption" sx={{ color: '#7f8c8d', textTransform: 'uppercase' }}>
+                  Account Balance
+                </Typography>
+                <Typography sx={{ fontWeight: 700, color: '#27ae60', fontSize: '1.05rem' }}>
+                  ${typeof user.balance === 'number' ? user.balance.toFixed(2) : '0.00'}
+                </Typography>
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <Typography variant="caption" sx={{ color: '#7f8c8d', textTransform: 'uppercase' }}>
                   Name
                 </Typography>
                 <Typography sx={{ fontWeight: 600, color: '#2c3e50' }}>

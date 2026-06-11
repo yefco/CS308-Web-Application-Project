@@ -37,6 +37,7 @@ pub struct User {
     pub role: UserRole,
     pub tax_id: Option<String>,
     pub home_address: Option<String>,
+    pub balance: f64,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -72,6 +73,7 @@ pub struct UserResponse {
     pub role: UserRole,
     pub tax_id: Option<String>,
     pub home_address: Option<String>,
+    pub balance: f64,
     pub created_at: DateTime<Utc>,
 }
 
@@ -95,6 +97,7 @@ impl From<User> for UserResponse {
             role: user.role,
             tax_id: user.tax_id,
             home_address: user.home_address,
+            balance: user.balance,
             created_at: user.created_at,
         }
     }
