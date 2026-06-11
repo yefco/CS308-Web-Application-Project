@@ -63,9 +63,11 @@ const Header = ({ isLoggedIn, onLogout }) => {
 
   useEffect(() => {
     loadNotifications();
+    const interval = setInterval(loadNotifications, 15000);
+    return () => clearInterval(interval);
   }, [loadNotifications]);
 
-  const handleNotifOpen = (e) => setNotifAnchor(e.currentTarget);
+  const handleNotifOpen = (e) => { setNotifAnchor(e.currentTarget); loadNotifications(); };
   const handleNotifClose = () => setNotifAnchor(null);
 
   const handleMarkAllRead = async () => {

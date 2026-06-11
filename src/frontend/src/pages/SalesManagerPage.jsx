@@ -24,10 +24,12 @@ import {
   TrendingUp as RevenueIcon,
   BarChart as ChartIcon,
   AssignmentReturn as ReturnIcon,
+  Receipt as InvoiceIcon,
 } from '@mui/icons-material';
 import DiscountManagementTab from '../components/DiscountManagementTab';
 import RevenueReportsTab from '../components/RevenueReportsTab';
 import RevenueChartsTab from '../components/RevenueChartsTab';
+import InvoicesTab from '../components/InvoicesTab';
 import '../styles/SalesManagerPage.css';
 
 function authHeaders() {
@@ -240,6 +242,11 @@ function SalesManagerPage({ isLoggedIn }) {
               iconPosition="start"
               label="Return Requests"
             />
+            <Tab
+              icon={<InvoiceIcon sx={{ mr: 1 }} />}
+              iconPosition="start"
+              label="Invoices"
+            />
           </Tabs>
 
           {/* Tab Content */}
@@ -255,6 +262,9 @@ function SalesManagerPage({ isLoggedIn }) {
             )}
             {activeTab === 3 && (
               <ReturnRequestsTab refreshTrigger={refreshTrigger} />
+            )}
+            {activeTab === 4 && (
+              <InvoicesTab />
             )}
           </Box>
         </Box>
