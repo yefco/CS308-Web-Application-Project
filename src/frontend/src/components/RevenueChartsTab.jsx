@@ -180,6 +180,38 @@ function RevenueChartsTab({ refreshTrigger }) {
             </Paper>
           </Grid>
 
+          {/* Profit / Loss Chart */}
+          <Grid item xs={12}>
+            <Paper sx={{ p: 3, boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+              <Typography variant="h6" sx={{ fontWeight: 600, color: '#2c3e50', mb: 0.5 }}>
+                Profit / Loss by Day
+              </Typography>
+              <Typography variant="body2" sx={{ color: '#7f8c8d', mb: 2 }}>
+                Net = Revenue − Refunds. Green bars = profit, red bars = loss (refunds exceeded revenue).
+              </Typography>
+              {trendData.length > 0 ? (
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={trendData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="date" />
+                    <YAxis tickFormatter={(v) => `$${v}`} />
+                    <Tooltip formatter={(v, name) => [`$${Number(v).toFixed(2)}`, name]} />
+                    <Legend />
+                    <Bar dataKey="Revenue" fill="#27ae60" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="Refunds" fill="#e74c3c" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="Net" radius={[4, 4, 0, 0]}>
+                      {trendData.map((entry, i) => (
+                        <Cell key={i} fill={entry.Net >= 0 ? '#2980b9' : '#c0392b'} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <Alert severity="info">No orders in the selected date range.</Alert>
+              )}
+            </Paper>
+          </Grid>
+
           {/* Period Summary Bar */}
           <Grid item xs={12} md={6}>
             <Paper sx={{ p: 3, boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
