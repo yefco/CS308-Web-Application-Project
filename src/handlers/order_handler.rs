@@ -150,9 +150,8 @@ pub async fn update_delivery_status(
     Ok(Json(response))
 }
 
-/// POST /api/orders/:order_id/send-invoice-email — mock email sending for demo.
-/// Logs to console with a clear marker and returns a structured confirmation
-/// that the frontend displays to the user. Requires authentication.
+/// POST /api/orders/:order_id/send-invoice-email — sends a real HTML invoice email.
+/// Falls back to demo-logging if SMTP is not configured. Requires authentication.
 pub async fn send_invoice_email(
     State(state): State<AppState>,
     headers: HeaderMap,
@@ -160,22 +159,56 @@ pub async fn send_invoice_email(
 ) -> Result<impl IntoResponse, AppError> {
     let user_id = extract_authenticated_user_id(&headers, &state.jwt_secret)?;
     let order = state.order_service.get_order(user_id, order_id).await?;
+    let user = crate::repository::user_repository::find_by_id(&state.pool, user_id)
+        .await?
+        .ok_or_else(|| AppError::NotFound("User not found".into()))?;
     let timestamp = Utc::now().to_rfc3339();
-    tracing::info!(
-        "📧 [DEMO-EMAIL] ORDER #{} | user_id={} | total=${:.2} | ts={}",
-        order.order_id,
-        user_id,
-        order.total_amount,
-        timestamp,
-    );
-    Ok(axum::Json(serde_json::json!({
-        "status": "sent",
-        "message": format!("Invoice for Order #{} has been queued for delivery.", order.order_id),
-        "order_id": order.order_id,
-        "total_amount": order.total_amount,
-        "recipient_user_id": user_id,
-        "sent_at": timestamp,
-    })))
+
+    match state
+        .email_service
+        .send_invoice(&order, &user.email, &user.user_name)
+        .await
+    {
+        Ok(true) => {
+            tracing::info!(
+                "📧 Invoice sent to {} for order #{}",
+                user.email,
+                order.order_id
+            );
+            Ok(axum::Json(serde_json::json!({
+                "status": "sent",
+                "message": format!("Invoice for Order #{} sent to {}.", order.order_id, user.email),
+                "order_id": order.order_id,
+                "total_amount": order.total_amount,
+                "recipient_email": user.email,
+                "sent_at": timestamp,
+            })))
+        }
+        Ok(false) => {
+            tracing::info!(
+                "📧 [DEMO-EMAIL] ORDER #{} | to={} | total=${:.2} | ts={} (SMTP not configured)",
+                order.order_id,
+                user.email,
+                order.total_amount,
+                timestamp,
+            );
+            Ok(axum::Json(serde_json::json!({
+                "status": "demo",
+                "message": format!(
+                    "Invoice for Order #{} logged (SMTP not configured).",
+                    order.order_id
+                ),
+                "order_id": order.order_id,
+                "total_amount": order.total_amount,
+                "recipient_email": user.email,
+                "sent_at": timestamp,
+            })))
+        }
+        Err(e) => {
+            tracing::error!("Failed to send invoice email: {}", e);
+            Err(AppError::Internal(format!("Email delivery failed: {e}")))
+        }
+    }
 }
 
 fn require_manager(headers: &HeaderMap, jwt_secret: &str) -> Result<(), AppError> {

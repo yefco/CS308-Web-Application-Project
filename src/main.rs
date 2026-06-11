@@ -45,6 +45,7 @@ use crate::routes::{
 };
 use crate::services::auth_service::AuthService;
 use crate::services::cart_service::CartService;
+use crate::services::email_service::EmailService;
 use crate::services::order_service::OrderService;
 use crate::services::payment_service::PaymentService;
 use crate::services::product_service::ProductService;
@@ -64,6 +65,7 @@ pub struct AppState {
     pub pool: PgPool,
     pub auth_service: AuthService,
     pub cart_service: CartService,
+    pub email_service: EmailService,
     pub order_service: OrderService,
     pub payment_service: PaymentService,
     pub product_service: ProductService,
@@ -101,6 +103,14 @@ async fn main() {
     );
 
     let cart_service = CartService::new(pool.clone());
+    let email_service = EmailService::new(
+        config.smtp_host.clone(),
+        config.smtp_port,
+        config.smtp_username.clone(),
+        config.smtp_password.clone(),
+        config.smtp_from_name.clone(),
+        config.smtp_from_email.clone(),
+    );
     let order_service = OrderService::new(pool.clone());
     let payment_service = PaymentService::new(pool.clone());
     let product_service = ProductService::new(pool.clone());
@@ -111,6 +121,7 @@ async fn main() {
         pool: pool.clone(),
         auth_service,
         cart_service,
+        email_service,
         order_service,
         payment_service,
         product_service,

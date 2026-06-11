@@ -28,6 +28,24 @@ pub struct AppConfig {
 
     /// How many hours a JWT token stays valid.
     pub jwt_expiration_hours: i64,
+
+    /// SMTP server hostname (e.g. "smtp.gmail.com"). If absent, email sending is disabled.
+    pub smtp_host: Option<String>,
+
+    /// SMTP port. Defaults to 587 (STARTTLS).
+    pub smtp_port: u16,
+
+    /// SMTP login username.
+    pub smtp_username: Option<String>,
+
+    /// SMTP login password (or app-specific password for Gmail).
+    pub smtp_password: Option<String>,
+
+    /// Display name shown in the From header.
+    pub smtp_from_name: String,
+
+    /// From email address.
+    pub smtp_from_email: Option<String>,
 }
 
 impl AppConfig {
@@ -53,6 +71,17 @@ impl AppConfig {
                 .unwrap_or_else(|_| "24".to_string())
                 .parse()
                 .expect("JWT_EXPIRATION_HOURS must be a valid integer"),
+
+            smtp_host: std::env::var("SMTP_HOST").ok(),
+            smtp_port: std::env::var("SMTP_PORT")
+                .unwrap_or_else(|_| "587".to_string())
+                .parse()
+                .expect("SMTP_PORT must be a valid u16"),
+            smtp_username: std::env::var("SMTP_USERNAME").ok(),
+            smtp_password: std::env::var("SMTP_PASSWORD").ok(),
+            smtp_from_name: std::env::var("SMTP_FROM_NAME")
+                .unwrap_or_else(|_| "Online Store".to_string()),
+            smtp_from_email: std::env::var("SMTP_FROM_EMAIL").ok(),
         }
     }
 }
