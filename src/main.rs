@@ -19,6 +19,14 @@ mod models;
 mod repository;
 mod routes;
 mod services;
+#[cfg(test)]
+mod test_batch_2;
+#[cfg(test)]
+mod test_batch_3;
+#[cfg(test)]
+mod test_batch_4;
+#[cfg(test)]
+mod test_batch_5;
 mod utils;
 
 use std::net::SocketAddr;

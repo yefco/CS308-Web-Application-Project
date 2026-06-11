@@ -869,7 +869,17 @@ function DeliveriesTab({ onSnack }) {
         <Table size="small">
           <TableHead sx={{ bgcolor: '#2c3e50' }}>
             <TableRow>
-              {['Order ID', 'Status', 'Date', 'Address', 'Total', 'Update Status'].map((h) => (
+              {[
+                'Order ID',
+                'Customer ID',
+                'Status',
+                'Completed',
+                'Date',
+                'Address',
+                'Total',
+                'Items (Product × Qty)',
+                'Update Status',
+              ].map((h) => (
                 <TableCell key={h} sx={{ color: '#fff', fontWeight: 'bold' }}>
                   {h}
                 </TableCell>
@@ -880,7 +890,7 @@ function DeliveriesTab({ onSnack }) {
           <TableBody>
             {orders.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} align="center" sx={{ py: 4, color: '#7f8c8d' }}>
+                <TableCell colSpan={9} align="center" sx={{ py: 4, color: '#7f8c8d' }}>
                   No orders found
                 </TableCell>
               </TableRow>
@@ -888,10 +898,13 @@ function DeliveriesTab({ onSnack }) {
               orders.map((o) => {
                 const norm = (o.status || 'processing').toLowerCase().replace('-', '_');
                 const isTerminal = norm === 'cancelled' || norm === 'returned';
+                const isCompleted = norm === 'delivered';
 
                 return (
                   <TableRow key={o.order_id} hover>
                     <TableCell>#{o.order_id}</TableCell>
+
+                    <TableCell sx={{ color: '#7f8c8d' }}>#{o.user_id}</TableCell>
 
                     <TableCell>
                       <Chip
@@ -902,12 +915,21 @@ function DeliveriesTab({ onSnack }) {
                     </TableCell>
 
                     <TableCell>
+                      <Chip
+                        label={isCompleted ? 'Yes' : 'No'}
+                        color={isCompleted ? 'success' : 'default'}
+                        size="small"
+                        variant={isCompleted ? 'filled' : 'outlined'}
+                      />
+                    </TableCell>
+
+                    <TableCell>
                       {o.created_at ? new Date(o.created_at).toLocaleDateString() : '—'}
                     </TableCell>
 
                     <TableCell
                       sx={{
-                        maxWidth: 200,
+                        maxWidth: 180,
                         overflow: 'hidden',
                         textOverflow: 'ellipsis',
                         whiteSpace: 'nowrap',
@@ -918,6 +940,18 @@ function DeliveriesTab({ onSnack }) {
 
                     <TableCell sx={{ fontWeight: 700 }}>
                       ${parseFloat(o.total_amount || 0).toFixed(2)}
+                    </TableCell>
+
+                    <TableCell>
+                      {(o.items ?? []).length === 0 ? (
+                        '—'
+                      ) : (
+                        o.items.map((item) => (
+                          <Box key={item.order_item_id} sx={{ fontSize: 12, color: '#555' }}>
+                            #{item.product_id} × {item.quantity}
+                          </Box>
+                        ))
+                      )}
                     </TableCell>
 
                     <TableCell>

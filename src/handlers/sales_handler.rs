@@ -7,7 +7,7 @@ use axum::{
 use serde::{Deserialize, Serialize};
 
 use crate::middleware::auth::decode_jwt;
-use crate::models::product::SetDiscountRequest;
+use crate::models::product::{SetDiscountRequest, SetPriceRequest};
 use crate::models::return_request::PendingReturnRequestsResponse;
 use crate::repository::{
     notification_repository, order_repository, product_repository, return_repository,
@@ -83,6 +83,28 @@ fn require_sales_or_product_manager(
     }
 
     Ok(())
+}
+
+// ─── PATCH /api/products/:id/price (sales_manager) ───────────
+
+pub async fn set_price(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(product_id): Path<i32>,
+    Json(payload): Json<SetPriceRequest>,
+) -> Result<impl IntoResponse, AppError> {
+    require_sales_manager(&headers, &state.jwt_secret)?;
+
+    if payload.price < 0.0 {
+        return Err(AppError::BadRequest("Price must be non-negative".into()));
+    }
+
+    let product = product_repository::set_price(&state.pool, product_id, payload.price)
+        .await?
+        .ok_or_else(|| AppError::NotFound("Product not found".into()))?;
+
+    use crate::models::product::ProductResponse;
+    Ok(Json(ProductResponse::from(product)))
 }
 
 // ─── PATCH /api/products/:id/discount (sales_manager) ─────────
@@ -244,6 +266,7 @@ pub async fn list_invoices(
 
         responses.push(OrderResponse {
             order_id: order.order_id,
+            user_id: order.user_id,
             status: order.status,
             delivery_address: order.delivery_address,
             total_amount: order.total_amount,

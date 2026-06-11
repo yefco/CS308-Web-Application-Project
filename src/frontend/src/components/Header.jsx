@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
 import {
   AppBar,
@@ -11,6 +11,11 @@ import {
   Menu,
   MenuItem,
   Container,
+  Divider,
+  List,
+  ListItem,
+  ListItemText,
+  Paper,
 } from '@mui/material';
 import {
   ShoppingCart,
@@ -18,8 +23,10 @@ import {
   Menu as MenuIcon,
   Logout as LogoutIcon,
   Dashboard,
+  Notifications as NotificationsIcon,
 } from '@mui/icons-material';
 import { useCart } from '../context/CartContext';
+import { getNotifications, markAllRead } from '../services/notificationService';
 import '../styles/Header.css';
 
 const Header = ({ isLoggedIn, onLogout }) => {
@@ -27,6 +34,9 @@ const Header = ({ isLoggedIn, onLogout }) => {
   const { cartCount } = useCart();
   const [mobileMenuAnchor, setMobileMenuAnchor] = useState(null);
   const [userMenuAnchor, setUserMenuAnchor] = useState(null);
+  const [notifAnchor, setNotifAnchor] = useState(null);
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   const userRole = (() => {
     try {
@@ -40,6 +50,34 @@ const Header = ({ isLoggedIn, onLogout }) => {
   const isProductManager = userRole === 'product_manager' || userRole === 'ProductManager';
   const isSalesManager = userRole === 'sales_manager' || userRole === 'SalesManager';
 
+  const loadNotifications = useCallback(async () => {
+    if (!isLoggedIn || !isCustomer) return;
+    try {
+      const data = await getNotifications();
+      setNotifications(data.notifications ?? []);
+      setUnreadCount(data.unread_count ?? 0);
+    } catch {
+      // silently ignore — bell just shows 0
+    }
+  }, [isLoggedIn, isCustomer]);
+
+  useEffect(() => {
+    loadNotifications();
+  }, [loadNotifications]);
+
+  const handleNotifOpen = (e) => setNotifAnchor(e.currentTarget);
+  const handleNotifClose = () => setNotifAnchor(null);
+
+  const handleMarkAllRead = async () => {
+    try {
+      await markAllRead();
+      setUnreadCount(0);
+      setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
+    } catch {
+      // ignore
+    }
+  };
+
   const handleMobileMenuOpen = (e) => setMobileMenuAnchor(e.currentTarget);
   const handleMobileMenuClose = () => setMobileMenuAnchor(null);
   const handleUserMenuOpen = (e) => setUserMenuAnchor(e.currentTarget);
@@ -51,6 +89,8 @@ const Header = ({ isLoggedIn, onLogout }) => {
     localStorage.removeItem('authToken');
     localStorage.removeItem('userData');
     handleUserMenuClose();
+    setNotifications([]);
+    setUnreadCount(0);
     onLogout();
     navigate('/');
   };
@@ -94,6 +134,73 @@ const Header = ({ isLoggedIn, onLogout }) => {
 
           {/* Right Section */}
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            {/* Notification Bell — customers only */}
+            {isLoggedIn && isCustomer && (
+              <>
+                <IconButton
+                  color="inherit"
+                  onClick={handleNotifOpen}
+                  sx={{ '&:hover': { bgcolor: 'rgba(255,255,255,0.1)' } }}
+                >
+                  <Badge badgeContent={unreadCount > 0 ? unreadCount : null} color="error">
+                    <NotificationsIcon />
+                  </Badge>
+                </IconButton>
+
+                <Menu
+                  anchorEl={notifAnchor}
+                  open={!!notifAnchor}
+                  onClose={handleNotifClose}
+                  PaperProps={{ sx: { mt: 1, width: 340, maxHeight: 420 } }}
+                >
+                  <Box sx={{ px: 2, py: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                      Notifications
+                    </Typography>
+                    {unreadCount > 0 && (
+                      <Button size="small" onClick={handleMarkAllRead} sx={{ fontSize: 11 }}>
+                        Mark all read
+                      </Button>
+                    )}
+                  </Box>
+                  <Divider />
+                  {notifications.length === 0 ? (
+                    <MenuItem disabled>
+                      <Typography variant="body2" color="textSecondary">
+                        No notifications yet
+                      </Typography>
+                    </MenuItem>
+                  ) : (
+                    <List dense disablePadding sx={{ maxHeight: 320, overflowY: 'auto' }}>
+                      {notifications.map((n) => (
+                        <ListItem
+                          key={n.notification_id}
+                          alignItems="flex-start"
+                          sx={{
+                            bgcolor: n.is_read ? 'transparent' : 'rgba(52,152,219,0.08)',
+                            borderLeft: n.is_read ? 'none' : '3px solid #3498db',
+                          }}
+                        >
+                          <ListItemText
+                            primary={
+                              <Typography variant="body2" sx={{ fontSize: 13 }}>
+                                {n.message}
+                              </Typography>
+                            }
+                            secondary={
+                              <Typography variant="caption" color="textSecondary">
+                                {new Date(n.created_at).toLocaleString()}
+                              </Typography>
+                            }
+                          />
+                        </ListItem>
+                      ))}
+                    </List>
+                  )}
+                </Menu>
+              </>
+            )}
+
             {/* Cart Button */}
             <IconButton
               color="inherit"

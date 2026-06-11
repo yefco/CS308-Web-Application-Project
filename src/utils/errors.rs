@@ -48,3 +48,77 @@ impl From<sqlx::Error> for AppError {
         AppError::Internal("An internal error occurred".to_string())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use axum::{
+        body::to_bytes,
+        http::StatusCode,
+        response::IntoResponse,
+    };
+
+    use super::AppError;
+
+    async fn assert_error_response(error: AppError, expected_status: StatusCode, expected_body: &str) {
+        let response = error.into_response();
+        assert_eq!(response.status(), expected_status);
+
+        let body = to_bytes(response.into_body(), usize::MAX)
+            .await
+            .expect("response body should be readable");
+        assert_eq!(
+            String::from_utf8(body.to_vec()).expect("response body should be valid utf-8"),
+            expected_body
+        );
+    }
+
+    #[tokio::test]
+    async fn bad_request_maps_to_400_with_json_body() {
+        assert_error_response(
+            AppError::BadRequest("invalid input".into()),
+            StatusCode::BAD_REQUEST,
+            r#"{"error":"invalid input"}"#,
+        )
+        .await;
+    }
+
+    #[tokio::test]
+    async fn unauthorized_maps_to_401_with_json_body() {
+        assert_error_response(
+            AppError::Unauthorized("login required".into()),
+            StatusCode::UNAUTHORIZED,
+            r#"{"error":"login required"}"#,
+        )
+        .await;
+    }
+
+    #[tokio::test]
+    async fn forbidden_maps_to_403_with_json_body() {
+        assert_error_response(
+            AppError::Forbidden("access denied".into()),
+            StatusCode::FORBIDDEN,
+            r#"{"error":"access denied"}"#,
+        )
+        .await;
+    }
+
+    #[tokio::test]
+    async fn not_found_maps_to_404_with_json_body() {
+        assert_error_response(
+            AppError::NotFound("product not found".into()),
+            StatusCode::NOT_FOUND,
+            r#"{"error":"product not found"}"#,
+        )
+        .await;
+    }
+
+    #[tokio::test]
+    async fn internal_maps_to_500_with_json_body() {
+        assert_error_response(
+            AppError::Internal("unexpected failure".into()),
+            StatusCode::INTERNAL_SERVER_ERROR,
+            r#"{"error":"unexpected failure"}"#,
+        )
+        .await;
+    }
+}
