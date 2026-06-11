@@ -40,8 +40,16 @@ impl From<sqlx::Error> for AppError {
         // Detect PostgreSQL unique constraint violations (code 23505)
         // and return a user-friendly Conflict instead of a 500.
         if let sqlx::Error::Database(ref db_err) = err {
-            if db_err.code().as_deref() == Some("23505") {
-                return AppError::Conflict("A record with that value already exists".to_string());
+            match db_err.code().as_deref() {
+                Some("23505") => {
+                    return AppError::Conflict("A record with that value already exists".to_string());
+                }
+                Some("23503") => {
+                    return AppError::Conflict(
+                        "Cannot delete: this record is referenced by existing data (e.g. orders)".to_string(),
+                    );
+                }
+                _ => {}
             }
         }
         tracing::error!("Database error: {:?}", err);

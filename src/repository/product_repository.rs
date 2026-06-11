@@ -7,7 +7,7 @@ const PRODUCT_COLS: &str = r#"
     description, stock_quantity,
     price::FLOAT8           AS price,
     discount_percent::FLOAT8 AS discount_percent,
-    warranty_status, distributor_info, created_at
+    warranty_status, distributor_info, created_at, is_active
 "#;
 
 // ─── Category queries ─────────────────────────────────────────
@@ -83,7 +83,7 @@ pub async fn delete_category(pool: &PgPool, category_id: i32) -> Result<bool, sq
 
 pub async fn list_products(pool: &PgPool) -> Result<Vec<Product>, sqlx::Error> {
     sqlx::query_as::<_, Product>(&format!(
-        "SELECT {PRODUCT_COLS} FROM products ORDER BY created_at DESC, product_id DESC"
+        "SELECT {PRODUCT_COLS} FROM products WHERE is_active = TRUE ORDER BY created_at DESC, product_id DESC"
     ))
     .fetch_all(pool)
     .await
@@ -91,7 +91,7 @@ pub async fn list_products(pool: &PgPool) -> Result<Vec<Product>, sqlx::Error> {
 
 pub async fn find_product(pool: &PgPool, product_id: i32) -> Result<Option<Product>, sqlx::Error> {
     sqlx::query_as::<_, Product>(&format!(
-        "SELECT {PRODUCT_COLS} FROM products WHERE product_id = $1"
+        "SELECT {PRODUCT_COLS} FROM products WHERE product_id = $1 AND is_active = TRUE"
     ))
     .bind(product_id)
     .fetch_optional(pool)
@@ -103,7 +103,7 @@ pub async fn find_product_in_tx(
     product_id: i32,
 ) -> Result<Option<Product>, sqlx::Error> {
     sqlx::query_as::<_, Product>(&format!(
-        "SELECT {PRODUCT_COLS} FROM products WHERE product_id = $1"
+        "SELECT {PRODUCT_COLS} FROM products WHERE product_id = $1 AND is_active = TRUE"
     ))
     .bind(product_id)
     .fetch_optional(&mut **tx)
@@ -307,7 +307,7 @@ pub async fn increment_stock(
 }
 
 pub async fn delete_product(pool: &PgPool, product_id: i32) -> Result<bool, sqlx::Error> {
-    sqlx::query("DELETE FROM products WHERE product_id = $1")
+    sqlx::query("UPDATE products SET is_active = FALSE WHERE product_id = $1 AND is_active = TRUE")
         .bind(product_id)
         .execute(pool)
         .await

@@ -292,7 +292,6 @@ const LoginPage = ({ onLoginSuccess }) => {
           </Box>
         </Paper>
       </Container>
-    </Box>
       <Dialog open={forgotOpen} onClose={() => setForgotOpen(false)} maxWidth="xs" fullWidth>
         <DialogTitle sx={{ fontWeight: 700, color: '#2c3e50' }}>Reset Password</DialogTitle>
         <DialogContent>

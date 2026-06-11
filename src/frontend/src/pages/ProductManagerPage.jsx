@@ -184,7 +184,8 @@ function ProductsTab({ categories, onSnack }) {
       );
 
       if (!res.ok) {
-        throw new Error((await res.json().catch(() => ({}))).message);
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || err.message || res.statusText);
       }
 
       onSnack('Stock updated', 'success');
@@ -207,7 +208,8 @@ function ProductsTab({ categories, onSnack }) {
       );
 
       if (!res.ok) {
-        throw new Error((await res.json().catch(() => ({}))).message);
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || err.message || res.statusText);
       }
 
       onSnack('Product deleted', 'success');
@@ -609,7 +611,8 @@ function CategoriesTab({ categories, onCategoriesChange, onSnack }) {
       );
 
       if (!res.ok) {
-        throw new Error((await res.json().catch(() => ({}))).message);
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || err.message || res.statusText);
       }
 
       onSnack('Category deleted', 'success');

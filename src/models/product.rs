@@ -23,6 +23,7 @@ pub struct Product {
     pub warranty_status: bool,
     pub distributor_info: Option<String>,
     pub created_at: DateTime<Utc>,
+    pub is_active: bool,
 }
 
 // ─── Request DTOs ─────────────────────────────────────────────

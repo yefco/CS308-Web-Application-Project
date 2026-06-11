@@ -48,3 +48,7 @@ CREATE INDEX IF NOT EXISTS idx_notifications_user_unread
 ALTER TABLE users
     ADD COLUMN IF NOT EXISTS balance NUMERIC(10,2) NOT NULL DEFAULT 0
         CHECK (balance >= 0);
+
+-- ── Soft delete for products ──────────────────────────────────
+ALTER TABLE products
+    ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT TRUE;

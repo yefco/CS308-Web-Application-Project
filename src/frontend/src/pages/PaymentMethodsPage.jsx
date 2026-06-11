@@ -764,7 +764,7 @@ const PaymentMethodsPage = () => {
 
         {emailSent && (
           <Alert severity="success" sx={{ mx: 3, mb: 1 }} icon={false} className="invoice-email-alert">
-            📧 Mock invoice email sent to <strong>{localStorage.getItem('userEmail') || 'your account'}</strong> — confirmation logged on server
+            📧 Invoice email sent to <strong>{localStorage.getItem('userEmail') || 'your account'}</strong>
           </Alert>
         )}
         <DialogActions sx={{ px: 3, pb: 2, gap: 1 }}>
