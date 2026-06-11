@@ -43,3 +43,8 @@ CREATE TABLE IF NOT EXISTS notifications (
 CREATE INDEX IF NOT EXISTS idx_notifications_user_unread
     ON notifications (user_id, is_read)
     WHERE is_read = FALSE;
+
+-- ── Customer account balance for refunds ─────────────────────
+ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS balance NUMERIC(10,2) NOT NULL DEFAULT 0
+        CHECK (balance >= 0);

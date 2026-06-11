@@ -13,10 +13,12 @@ import {
   LocalOffer as DiscountIcon,
   TrendingUp as RevenueIcon,
   BarChart as ChartIcon,
+  AssignmentReturn as ReturnIcon,
 } from '@mui/icons-material';
 import DiscountManagementTab from '../components/DiscountManagementTab';
 import RevenueReportsTab from '../components/RevenueReportsTab';
 import RevenueChartsTab from '../components/RevenueChartsTab';
+import ReturnRequestsTab from '../components/ReturnRequestsTab';
 import '../styles/SalesManagerPage.css';
 
 function SalesManagerPage({ isLoggedIn }) {
@@ -58,7 +60,7 @@ function SalesManagerPage({ isLoggedIn }) {
             Sales Manager Dashboard
           </Typography>
           <Typography sx={{ color: '#7f8c8d' }}>
-            Manage discounts, view revenue reports, and analyze sales performance
+            Manage discounts, view revenue reports, analyze sales performance, and handle return requests
           </Typography>
         </Box>
 
@@ -97,6 +99,11 @@ function SalesManagerPage({ isLoggedIn }) {
               iconPosition="start"
               label="Analytics & Charts"
             />
+            <Tab
+              icon={<ReturnIcon sx={{ mr: 1 }} />}
+              iconPosition="start"
+              label="Return Requests"
+            />
           </Tabs>
 
           {/* Tab Content */}
@@ -109,6 +116,9 @@ function SalesManagerPage({ isLoggedIn }) {
             )}
             {activeTab === 2 && (
               <RevenueChartsTab onRefresh={handleRefresh} refreshTrigger={refreshTrigger} />
+            )}
+            {activeTab === 3 && (
+              <ReturnRequestsTab refreshTrigger={refreshTrigger} />
             )}
           </Box>
         </Box>

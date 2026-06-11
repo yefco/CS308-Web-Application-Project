@@ -11,6 +11,7 @@ use crate::models::product::SetDiscountRequest;
 use crate::models::return_request::PendingReturnRequestsResponse;
 use crate::repository::{
     notification_repository, order_repository, product_repository, return_repository,
+    user_repository,
 };
 use crate::utils::errors::AppError;
 use crate::AppState;
@@ -293,10 +294,18 @@ pub async fn approve_return(
     // Re-stock the item
     product_repository::increment_stock(&state.pool, req.product_id, req.quantity).await?;
 
+    // Credit the refund to the customer's account balance
+    user_repository::credit_balance(&state.pool, req.user_id, req.refund_amount).await?;
+
     let updated =
         return_repository::update_return_request_status(&state.pool, request_id, "approved")
             .await?
             .ok_or_else(|| AppError::NotFound("Return request not found".into()))?;
+
+    tracing::info!(
+        "✅ Return #{} approved: user_id={} refund=${:.2} credited to account",
+        request_id, req.user_id, req.refund_amount
+    );
 
     use crate::models::return_request::ReturnRequestResponse;
     Ok(Json(ReturnRequestResponse::from(updated)))
