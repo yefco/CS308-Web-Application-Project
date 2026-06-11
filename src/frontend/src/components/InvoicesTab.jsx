@@ -22,6 +22,7 @@ import {
   KeyboardArrowDown,
   KeyboardArrowUp,
   Download as DownloadIcon,
+  Print as PrintIcon,
 } from '@mui/icons-material';
 
 const STATUS_COLORS = {
@@ -176,6 +177,83 @@ function InvoicesTab() {
     URL.revokeObjectURL(url);
   };
 
+  const handlePrint = () => {
+    if (orders.length === 0) {
+      setSnack({ open: true, message: 'No invoices to print', severity: 'warning' });
+      return;
+    }
+
+    const statusColor = { processing: '#f39c12', in_transit: '#3498db', delivered: '#27ae60', cancelled: '#e74c3c', returned: '#8e44ad' };
+
+    const orderBlocks = orders.map((o) => {
+      const itemRows = (o.items ?? []).map((item) => `
+        <tr>
+          <td>${item.product_name}</td>
+          <td style="text-align:center">${item.quantity}</td>
+          <td style="text-align:right">$${parseFloat(item.unit_price).toFixed(2)}</td>
+          <td style="text-align:right;font-weight:600">$${parseFloat(item.subtotal).toFixed(2)}</td>
+        </tr>`).join('');
+
+      const color = statusColor[o.status] ?? '#7f8c8d';
+      return `
+        <div class="order-block">
+          <div class="order-header">
+            <span class="order-id">Order #${o.order_id}</span>
+            <span>Customer #${o.user_id}</span>
+            <span>${new Date(o.created_at).toLocaleDateString()}</span>
+            <span style="color:${color};font-weight:600;text-transform:capitalize">${o.status.replace('_',' ')}</span>
+            <span class="order-total">$${parseFloat(o.total_amount).toFixed(2)}</span>
+          </div>
+          <div style="font-size:12px;color:#7f8c8d;margin-bottom:6px">${o.delivery_address}</div>
+          <table>
+            <thead><tr><th>Product</th><th style="text-align:center">Qty</th><th style="text-align:right">Unit Price</th><th style="text-align:right">Subtotal</th></tr></thead>
+            <tbody>${itemRows}</tbody>
+          </table>
+        </div>`;
+    }).join('');
+
+    const html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title>Invoices ${from} to ${to}</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Arial, sans-serif; font-size: 13px; color: #2c3e50; padding: 32px; background: white; }
+    h1 { font-size: 20px; margin-bottom: 4px; }
+    .subtitle { color: #7f8c8d; font-size: 13px; margin-bottom: 6px; }
+    .summary { display: flex; gap: 32px; margin-bottom: 20px; padding: 12px 16px; background: #f8f9fa; border-radius: 6px; }
+    .summary div { font-size: 13px; color: #7f8c8d; }
+    .summary strong { display: block; font-size: 17px; color: #2c3e50; margin-top: 2px; }
+    .order-block { margin-bottom: 20px; border: 1px solid #e0e0e0; border-radius: 6px; overflow: hidden; page-break-inside: avoid; }
+    .order-header { display: flex; justify-content: space-between; align-items: center; background: #f4f6f8; padding: 8px 12px; flex-wrap: wrap; gap: 8px; font-size: 13px; }
+    .order-id { font-weight: 700; color: #3498db; }
+    .order-total { font-weight: 700; color: #27ae60; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th { background: #f4f6f8; padding: 6px 10px; text-align: left; font-weight: 600; border-bottom: 1px solid #e0e0e0; }
+    td { padding: 5px 10px; border-bottom: 1px solid #f0f0f0; }
+    tr:last-child td { border-bottom: none; }
+    @media print { body { padding: 16px; } }
+  </style>
+</head>
+<body>
+  <h1>Invoice Report</h1>
+  <div class="subtitle">Period: ${from} — ${to} &nbsp;|&nbsp; Generated: ${new Date().toLocaleString()}</div>
+  <div class="summary">
+    <div>Total Invoiced<strong>$${orders.reduce((s,o)=>s+parseFloat(o.total_amount||0),0).toFixed(2)}</strong></div>
+    <div>Orders<strong>${orders.length}</strong></div>
+  </div>
+  ${orderBlocks}
+</body>
+</html>`;
+
+    const win = window.open('', '_blank', 'width=800,height=900');
+    win.document.write(html);
+    win.document.close();
+    win.onload = () => { win.focus(); win.print(); };
+  };
+
+
   return (
     <>
       {/* Filters */}
@@ -206,6 +284,15 @@ function InvoicesTab() {
           sx={{ color: '#27ae60', borderColor: '#27ae60' }}
         >
           Export CSV
+        </Button>
+        <Button
+          variant="outlined"
+          startIcon={<PrintIcon />}
+          onClick={handlePrint}
+          title="Opens print preview — choose 'Save as PDF' in the print dialog"
+          sx={{ color: '#8e44ad', borderColor: '#8e44ad' }}
+        >
+          Print / Save as PDF
         </Button>
       </Box>
 
