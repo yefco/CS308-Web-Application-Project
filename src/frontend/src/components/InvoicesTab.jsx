@@ -22,8 +22,11 @@ import {
   KeyboardArrowDown,
   KeyboardArrowUp,
   Download as DownloadIcon,
+  PictureAsPdf as PdfIcon,
   Print as PrintIcon,
 } from '@mui/icons-material';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 const STATUS_COLORS = {
   processing: '#f39c12',
@@ -177,6 +180,128 @@ function InvoicesTab() {
     URL.revokeObjectURL(url);
   };
 
+  const handleSavePDF = () => {
+    if (orders.length === 0) {
+      setSnack({ open: true, message: 'No invoices to export', severity: 'warning' });
+      return;
+    }
+
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const pageW = doc.internal.pageSize.getWidth();
+    const margin = 14;
+    let y = 20;
+
+    // Title
+    doc.setFontSize(20);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(44, 62, 80);
+    doc.text('Invoice Report', margin, y);
+    y += 8;
+
+    // Subtitle
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(127, 140, 141);
+    doc.text(`Period: ${from} — ${to}   |   Generated: ${new Date().toLocaleString()}`, margin, y);
+    y += 8;
+
+    // Summary row
+    doc.setFillColor(244, 246, 248);
+    doc.roundedRect(margin, y, pageW - margin * 2, 14, 2, 2, 'F');
+    doc.setFontSize(8);
+    doc.setTextColor(127, 140, 141);
+    doc.text('TOTAL INVOICED', margin + 4, y + 4.5);
+    doc.setFontSize(13);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(39, 174, 96);
+    doc.text(`$${totalRevenue.toFixed(2)}`, margin + 4, y + 11);
+
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(127, 140, 141);
+    doc.text('ORDERS', margin + 55, y + 4.5);
+    doc.setFontSize(13);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(52, 152, 219);
+    doc.text(`${orders.length}`, margin + 55, y + 11);
+    y += 20;
+
+    const statusColorMap = {
+      processing: [243, 156, 18],
+      in_transit: [52, 152, 219],
+      delivered: [39, 174, 96],
+      cancelled: [231, 76, 60],
+      returned: [142, 68, 173],
+    };
+
+    orders.forEach((order) => {
+      // Start a new page if not enough room for header + at least one row
+      if (y > doc.internal.pageSize.getHeight() - 50) {
+        doc.addPage();
+        y = 20;
+      }
+
+      // Order header band
+      doc.setFillColor(244, 246, 248);
+      doc.rect(margin, y, pageW - margin * 2, 11, 'F');
+
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(52, 152, 219);
+      doc.text(`Order #${order.order_id}`, margin + 2, y + 7);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(80, 80, 80);
+      doc.text(`Customer #${order.user_id}`, margin + 38, y + 7);
+      doc.text(new Date(order.created_at).toLocaleDateString(), margin + 78, y + 7);
+
+      const sc = statusColorMap[order.status] ?? [127, 140, 141];
+      doc.setTextColor(...sc);
+      doc.setFont('helvetica', 'bold');
+      doc.text(order.status.replace('_', ' '), margin + 110, y + 7);
+
+      doc.setTextColor(39, 174, 96);
+      doc.text(`$${parseFloat(order.total_amount).toFixed(2)}`, pageW - margin - 2, y + 7, { align: 'right' });
+      y += 13;
+
+      // Delivery address
+      doc.setFontSize(7.5);
+      doc.setFont('helvetica', 'italic');
+      doc.setTextColor(127, 140, 141);
+      const addrLines = doc.splitTextToSize(`Address: ${order.delivery_address}`, pageW - margin * 2 - 4);
+      doc.text(addrLines, margin + 2, y);
+      y += addrLines.length * 4 + 2;
+
+      // Line items table
+      autoTable(doc, {
+        startY: y,
+        margin: { left: margin, right: margin },
+        head: [['Product', 'Qty', 'Unit Price', 'Subtotal']],
+        body: (order.items ?? []).map((item) => [
+          item.product_name,
+          item.quantity,
+          `$${parseFloat(item.unit_price).toFixed(2)}`,
+          `$${parseFloat(item.subtotal).toFixed(2)}`,
+        ]),
+        styles: { fontSize: 8, cellPadding: 2.5 },
+        headStyles: { fillColor: [44, 62, 80], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8 },
+        columnStyles: {
+          1: { halign: 'center', cellWidth: 18 },
+          2: { halign: 'right', cellWidth: 28 },
+          3: { halign: 'right', cellWidth: 28 },
+        },
+        theme: 'grid',
+        tableLineColor: [220, 220, 220],
+        tableLineWidth: 0.1,
+      });
+
+      y = (doc.lastAutoTable?.finalY ?? y) + 10;
+    });
+
+    doc.save(`invoices-${from}-to-${to}.pdf`);
+    setSnack({ open: true, message: 'PDF downloaded successfully!', severity: 'success' });
+  };
+
   const handlePrint = () => {
     if (orders.length === 0) {
       setSnack({ open: true, message: 'No invoices to print', severity: 'warning' });
@@ -286,13 +411,20 @@ function InvoicesTab() {
           Export CSV
         </Button>
         <Button
+          variant="contained"
+          startIcon={<PdfIcon />}
+          onClick={handleSavePDF}
+          sx={{ bgcolor: '#e74c3c', '&:hover': { bgcolor: '#c0392b' } }}
+        >
+          Save as PDF
+        </Button>
+        <Button
           variant="outlined"
           startIcon={<PrintIcon />}
           onClick={handlePrint}
-          title="Opens print preview — choose 'Save as PDF' in the print dialog"
           sx={{ color: '#8e44ad', borderColor: '#8e44ad' }}
         >
-          Print / Save as PDF
+          Print
         </Button>
       </Box>
 
