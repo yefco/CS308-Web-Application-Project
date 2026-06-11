@@ -11,6 +11,9 @@ services:
       - ./src/database/migration.sql:/docker-entrypoint-initdb.d/02_migration.sql
       - ./src/database/seed.sql:/docker-entrypoint-initdb.d/03_seed.sql
       - ./src/database/demo_users.sql:/docker-entrypoint-initdb.d/04_demo_users.sql
+      - ./src/database/reviews_seed.sql:/docker-entrypoint-initdb.d/05_reviews_seed.sql
+      - ./src/database/triggers.sql:/docker-entrypoint-initdb.d/06_triggers.sql
+      - ./src/database/demo_scenario.sql:/docker-entrypoint-initdb.d/07_demo_scenario.sql
     ports:
       - "5432:5432"
     healthcheck:
