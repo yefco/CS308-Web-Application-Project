@@ -28,7 +28,6 @@ import {
 import DiscountManagementTab from '../components/DiscountManagementTab';
 import RevenueReportsTab from '../components/RevenueReportsTab';
 import RevenueChartsTab from '../components/RevenueChartsTab';
-import ReturnRequestsTab from '../components/ReturnRequestsTab';
 import '../styles/SalesManagerPage.css';
 
 function authHeaders() {
