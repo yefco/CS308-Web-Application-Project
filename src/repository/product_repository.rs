@@ -194,7 +194,7 @@ pub async fn update_stock(
         r#"
         UPDATE products
         SET stock_quantity = $2
-        WHERE product_id = $1
+        WHERE product_id = $1 AND is_active = TRUE
         RETURNING {PRODUCT_COLS}
         "#
     ))
