@@ -325,6 +325,15 @@ pub async fn approve_return(
             .await?
             .ok_or_else(|| AppError::NotFound("Return request not found".into()))?;
 
+    // Notify the customer
+    let msg = format!(
+        "✅ Your return request for \"{}\" has been approved. ${:.2} has been credited to your account balance.",
+        req.product_name, req.refund_amount
+    );
+    notification_repository::insert_notification(&state.pool, req.user_id, Some(req.product_id), &msg)
+        .await
+        .ok();
+
     tracing::info!(
         "✅ Return #{} approved: user_id={} refund=${:.2} credited to account",
         request_id, req.user_id, req.refund_amount
@@ -358,6 +367,15 @@ pub async fn reject_return(
         return_repository::update_return_request_status(&state.pool, request_id, "rejected")
             .await?
             .ok_or_else(|| AppError::NotFound("Return request not found".into()))?;
+
+    // Notify the customer
+    let msg = format!(
+        "❌ Your return request for \"{}\" has been rejected. Please contact support if you have questions.",
+        req.product_name
+    );
+    notification_repository::insert_notification(&state.pool, req.user_id, Some(req.product_id), &msg)
+        .await
+        .ok();
 
     use crate::models::return_request::ReturnRequestResponse;
     Ok((StatusCode::OK, Json(ReturnRequestResponse::from(updated))))
