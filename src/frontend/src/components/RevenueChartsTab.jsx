@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Button,
@@ -25,130 +25,125 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
-import { getRevenueData, getTopProducts } from '../services/salesManagerService';
 
-const COLORS = ['#27ae60', '#3498db', '#e74c3c', '#f39c12', '#9b59b6', '#1abc9c'];
+const REVENUE_STATUSES = new Set(['processing', 'in_transit', 'delivered']);
+const PIE_COLORS = ['#f39c12', '#3498db', '#27ae60', '#e74c3c', '#8e44ad'];
+const STATUS_LABELS = { processing: 'Processing', in_transit: 'In Transit', delivered: 'Delivered', cancelled: 'Cancelled', returned: 'Returned' };
+
+function authHeaders() {
+  const token = localStorage.getItem('authToken');
+  return { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` };
+}
 
 function RevenueChartsTab({ refreshTrigger }) {
   const [startDate, setStartDate] = useState(() => {
-    const date = new Date();
-    date.setMonth(date.getMonth() - 1);
-    return date.toISOString().split('T')[0];
+    const d = new Date(); d.setMonth(d.getMonth() - 1); return d.toISOString().split('T')[0];
   });
   const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
-  const [trendData, setTrendData] = useState([]);
-  const [profitData, setProfitData] = useState([]);
-  const [topProducts, setTopProducts] = useState([]);
-  const [statusData, setStatusData] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [snack, setSnack] = useState({ open: false, message: '', severity: 'success' });
 
-  useEffect(() => {
-    loadChartData();
-  }, [refreshTrigger]);
+  const [trendData, setTrendData]       = useState([]);
+  const [summaryData, setSummaryData]   = useState([]);
+  const [topProducts, setTopProducts]   = useState([]);
+  const [statusData, setStatusData]     = useState([]);
+  const [loading, setLoading]           = useState(false);
+  const [snack, setSnack]               = useState({ open: false, message: '', severity: 'success' });
 
-  const loadChartData = async () => {
+  const loadChartData = useCallback(async () => {
+    setLoading(true);
     try {
-      setLoading(true);
+      // Both fetches in parallel
+      const [invoiceRes, revenueRes] = await Promise.all([
+        fetch(`/api/sales/invoices?from=${startDate}&to=${endDate}`, { headers: authHeaders() }),
+        fetch(`/api/sales/revenue?from=${startDate}&to=${endDate}`,  { headers: authHeaders() }),
+      ]);
 
-      // Get revenue data
-      const revenueData = await getRevenueData(startDate, endDate);
-      const orders = Array.isArray(revenueData.orders) ? revenueData.orders : [];
+      const invoiceData = invoiceRes.ok  ? await invoiceRes.json()  : { orders: [] };
+      const revenueData = revenueRes.ok  ? await revenueRes.json()  : {};
 
-      // Process trend data (daily revenue)
-      const dailyRevenue = {};
-      orders.forEach((order) => {
-        const date = new Date(order.created_at).toISOString().split('T')[0];
-        dailyRevenue[date] = (dailyRevenue[date] || 0) + parseFloat(order.total_amount);
+      const orders = invoiceData.orders ?? [];
+
+      // ── Daily trend: revenue vs refunds ──────────────────────
+      const byDate = {};
+      orders.forEach((o) => {
+        const date = o.created_at.split('T')[0];
+        if (!byDate[date]) byDate[date] = { revenue: 0, refunds: 0 };
+        const amt = parseFloat(o.total_amount) || 0;
+        if (o.status === 'returned')              byDate[date].refunds  += amt;
+        else if (REVENUE_STATUSES.has(o.status)) byDate[date].revenue  += amt;
       });
 
-      const trendChartData = Object.entries(dailyRevenue)
-        .sort(([dateA], [dateB]) => dateA.localeCompare(dateB))
-        .map(([date, revenue]) => ({
-          date: new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-          revenue: parseFloat(revenue.toFixed(2)),
-          profit: parseFloat((revenue * 0.25).toFixed(2)), // Mock: 25% profit
-        }));
+      setTrendData(
+        Object.entries(byDate)
+          .sort(([a], [b]) => a.localeCompare(b))
+          .map(([date, { revenue, refunds }]) => ({
+            date: new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+            Revenue: +revenue.toFixed(2),
+            Refunds: +refunds.toFixed(2),
+            Net:     +(revenue - refunds).toFixed(2),
+          }))
+      );
 
-      setTrendData(trendChartData);
+      // ── Period summary bar from /revenue endpoint ─────────────
+      if (revenueData.revenue !== undefined) {
+        setSummaryData([
+          { name: 'Revenue',     value: +(revenueData.revenue     ?? 0).toFixed(2) },
+          { name: 'Refunds',     value: +(revenueData.refunds     ?? 0).toFixed(2) },
+          { name: 'Net Revenue', value: +(revenueData.net_revenue ?? 0).toFixed(2) },
+        ]);
+      }
 
-      // Profit data (weekly)
-      const weeklyProfit = {};
-      orders.forEach((order) => {
-        const date = new Date(order.created_at);
-        const weekStart = new Date(date);
-        weekStart.setDate(date.getDate() - date.getDay());
-        const week = weekStart.toISOString().split('T')[0];
-        weeklyProfit[week] = (weeklyProfit[week] || 0) + parseFloat(order.total_amount) * 0.25;
-      });
+      // ── Top products (from delivered/processing/in_transit orders) ──
+      const productMap = {};
+      orders
+        .filter((o) => REVENUE_STATUSES.has(o.status))
+        .forEach((o) => {
+          (o.items ?? []).forEach((item) => {
+            const key = item.product_name;
+            if (!productMap[key]) productMap[key] = 0;
+            productMap[key] += parseFloat(item.subtotal) || 0;
+          });
+        });
 
-      const profitChartData = Object.entries(weeklyProfit)
-        .sort(([weekA], [weekB]) => weekA.localeCompare(weekB))
-        .map(([week, profit]) => ({
-          week: new Date(week).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-          profit: parseFloat(profit.toFixed(2)),
-        }));
+      setTopProducts(
+        Object.entries(productMap)
+          .sort(([, a], [, b]) => b - a)
+          .slice(0, 10)
+          .map(([name, revenue]) => ({ name: name.length > 18 ? name.slice(0, 16) + '…' : name, revenue: +revenue.toFixed(2) }))
+      );
 
-      setProfitData(profitChartData);
-
-      // Status distribution
-      const statusCount = {
-        processing: 0,
-        in_transit: 0,
-        delivered: 0,
-        cancelled: 0,
-        returned: 0,
-      };
-
-      orders.forEach((order) => {
-        const status = order.status?.toLowerCase().replace('-', '_') || 'processing';
-        if (status in statusCount) {
-          statusCount[status]++;
-        }
+      // ── Status distribution ───────────────────────────────────
+      const statusCount = {};
+      orders.forEach((o) => {
+        const s = o.status ?? 'unknown';
+        statusCount[s] = (statusCount[s] || 0) + 1;
       });
 
       setStatusData(
-        Object.entries(statusCount).map(([name, value]) => ({
-          name: name.replace('_', ' ').charAt(0).toUpperCase() + name.slice(1),
-          value,
-        }))
-      );
-
-      // Top products
-      const topProductsData = await getTopProducts(startDate, endDate);
-      setTopProducts(
-        Array.isArray(topProductsData)
-          ? topProductsData.slice(0, 10)
-          : topProductsData?.products?.slice(0, 10) || []
+        Object.entries(statusCount)
+          .filter(([, v]) => v > 0)
+          .map(([name, value]) => ({ name: STATUS_LABELS[name] ?? name, value }))
       );
     } catch (err) {
       setSnack({ open: true, message: err.message || 'Failed to load chart data', severity: 'error' });
     } finally {
       setLoading(false);
     }
-  };
+  }, [startDate, endDate]);
+
+  useEffect(() => { loadChartData(); }, [refreshTrigger]);
 
   return (
     <>
       {/* Filters */}
       <Box sx={{ display: 'flex', gap: 2, mb: 3, flexWrap: 'wrap', alignItems: 'flex-end' }}>
-        <TextField
-          label="Start Date"
-          type="date"
-          value={startDate}
+        <TextField label="Start Date" type="date" value={startDate}
           onChange={(e) => setStartDate(e.target.value)}
-          InputLabelProps={{ shrink: true }}
-          sx={{ width: 150 }}
-        />
-        <TextField
-          label="End Date"
-          type="date"
-          value={endDate}
+          InputLabelProps={{ shrink: true }} sx={{ width: 160 }} />
+        <TextField label="End Date" type="date" value={endDate}
           onChange={(e) => setEndDate(e.target.value)}
-          InputLabelProps={{ shrink: true }}
-          sx={{ width: 150 }}
-        />
-        <Button variant="contained" onClick={loadChartData} sx={{ bgcolor: '#3498db' }}>
+          InputLabelProps={{ shrink: true }} sx={{ width: 160 }} />
+        <Button variant="contained" onClick={loadChartData}
+          sx={{ bgcolor: '#3498db', '&:hover': { bgcolor: '#2980b9' } }}>
           Update Charts
         </Button>
       </Box>
@@ -158,131 +153,114 @@ function RevenueChartsTab({ refreshTrigger }) {
           <CircularProgress />
         </Box>
       ) : (
-        <>
-          {/* Revenue Trend */}
-          <Paper sx={{ p: 3, mb: 3, boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-            <Typography variant="h6" sx={{ fontWeight: 600, color: '#2c3e50', mb: 2 }}>
-              Revenue Trend
-            </Typography>
-            {trendData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={300}>
-                <LineChart data={trendData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="date" />
-                  <YAxis />
-                  <Tooltip formatter={(value) => `$${value.toFixed(2)}`} />
-                  <Legend />
-                  <Line
-                    type="monotone"
-                    dataKey="revenue"
-                    stroke="#27ae60"
-                    strokeWidth={2}
-                    dot={{ r: 4 }}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="profit"
-                    stroke="#3498db"
-                    strokeWidth={2}
-                    dot={{ r: 4 }}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            ) : (
-              <Alert severity="info">No data to display</Alert>
-            )}
-          </Paper>
+        <Grid container spacing={3}>
 
-          {/* Profit Chart */}
-          <Paper sx={{ p: 3, mb: 3, boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-            <Typography variant="h6" sx={{ fontWeight: 600, color: '#2c3e50', mb: 2 }}>
-              Weekly Profit
-            </Typography>
-            {profitData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={profitData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="week" />
-                  <YAxis />
-                  <Tooltip formatter={(value) => `$${value.toFixed(2)}`} />
-                  <Bar dataKey="profit" fill="#9b59b6" radius={[8, 8, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            ) : (
-              <Alert severity="info">No data to display</Alert>
-            )}
-          </Paper>
+          {/* Revenue & Refunds Daily Trend */}
+          <Grid item xs={12}>
+            <Paper sx={{ p: 3, boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+              <Typography variant="h6" sx={{ fontWeight: 600, color: '#2c3e50', mb: 2 }}>
+                Daily Revenue vs Refunds
+              </Typography>
+              {trendData.length > 0 ? (
+                <ResponsiveContainer width="100%" height={300}>
+                  <LineChart data={trendData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="date" />
+                    <YAxis tickFormatter={(v) => `$${v}`} />
+                    <Tooltip formatter={(v) => `$${v.toFixed(2)}`} />
+                    <Legend />
+                    <Line type="monotone" dataKey="Revenue" stroke="#27ae60" strokeWidth={2} dot={{ r: 4 }} />
+                    <Line type="monotone" dataKey="Refunds" stroke="#e74c3c" strokeWidth={2} dot={{ r: 4 }} />
+                    <Line type="monotone" dataKey="Net" stroke="#3498db" strokeWidth={2} strokeDasharray="5 5" dot={{ r: 3 }} />
+                  </LineChart>
+                </ResponsiveContainer>
+              ) : (
+                <Alert severity="info">No orders in the selected date range.</Alert>
+              )}
+            </Paper>
+          </Grid>
+
+          {/* Period Summary Bar */}
+          <Grid item xs={12} md={6}>
+            <Paper sx={{ p: 3, boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+              <Typography variant="h6" sx={{ fontWeight: 600, color: '#2c3e50', mb: 2 }}>
+                Period Summary
+              </Typography>
+              {summaryData.length > 0 ? (
+                <ResponsiveContainer width="100%" height={260}>
+                  <BarChart data={summaryData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" />
+                    <YAxis tickFormatter={(v) => `$${v}`} />
+                    <Tooltip formatter={(v) => `$${v.toFixed(2)}`} />
+                    <Bar dataKey="value" radius={[6, 6, 0, 0]}>
+                      {summaryData.map((entry) => (
+                        <Cell
+                          key={entry.name}
+                          fill={entry.name === 'Refunds' ? '#e74c3c' : entry.name === 'Net Revenue' ? '#3498db' : '#27ae60'}
+                        />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <Alert severity="info">No summary data available.</Alert>
+              )}
+            </Paper>
+          </Grid>
 
           {/* Order Status Distribution */}
-          <Grid container spacing={3} sx={{ mb: 3 }}>
-            <Grid item xs={12} md={6}>
-              <Paper sx={{ p: 3, boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-                <Typography variant="h6" sx={{ fontWeight: 600, color: '#2c3e50', mb: 2 }}>
-                  Order Status Distribution
-                </Typography>
-                {statusData.length > 0 ? (
-                  <ResponsiveContainer width="100%" height={300}>
-                    <PieChart>
-                      <Pie
-                        data={statusData}
-                        cx="50%"
-                        cy="50%"
-                        labelLine={false}
-                        label={({ name, value }) => `${name}: ${value}`}
-                        outerRadius={80}
-                        fill="#8884d8"
-                        dataKey="value"
-                      >
-                        {statusData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip />
-                    </PieChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <Alert severity="info">No data to display</Alert>
-                )}
-              </Paper>
-            </Grid>
-
-            {/* Top Products */}
-            <Grid item xs={12} md={6}>
-              <Paper sx={{ p: 3, boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-                <Typography variant="h6" sx={{ fontWeight: 600, color: '#2c3e50', mb: 2 }}>
-                  Top 10 Products
-                </Typography>
-                {topProducts.length > 0 ? (
-                  <ResponsiveContainer width="100%" height={300}>
-                    <BarChart
-                      data={topProducts.map((p) => ({
-                        name: p.product_name?.substring(0, 15),
-                        sales: parseFloat(p.total_sales || 0),
-                      }))}
-                      layout="vertical"
-                    >
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis type="number" />
-                      <YAxis type="category" dataKey="name" width={100} tick={{ fontSize: 12 }} />
-                      <Tooltip formatter={(value) => `$${value.toFixed(2)}`} />
-                      <Bar dataKey="sales" fill="#e74c3c" radius={[0, 8, 8, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <Alert severity="info">No data to display</Alert>
-                )}
-              </Paper>
-            </Grid>
+          <Grid item xs={12} md={6}>
+            <Paper sx={{ p: 3, boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+              <Typography variant="h6" sx={{ fontWeight: 600, color: '#2c3e50', mb: 2 }}>
+                Order Status Distribution
+              </Typography>
+              {statusData.some((d) => d.value > 0) ? (
+                <ResponsiveContainer width="100%" height={260}>
+                  <PieChart>
+                    <Pie data={statusData} cx="50%" cy="50%"
+                      outerRadius={90} dataKey="value"
+                      label={({ name, value }) => `${name}: ${value}`} labelLine={false}>
+                      {statusData.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
+                    </Pie>
+                    <Tooltip />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : (
+                <Alert severity="info">No order data available.</Alert>
+              )}
+            </Paper>
           </Grid>
-        </>
+
+          {/* Top 10 Products */}
+          <Grid item xs={12}>
+            <Paper sx={{ p: 3, boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+              <Typography variant="h6" sx={{ fontWeight: 600, color: '#2c3e50', mb: 2 }}>
+                Top Products by Revenue (delivered orders only)
+              </Typography>
+              {topProducts.length > 0 ? (
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={topProducts} layout="vertical">
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis type="number" tickFormatter={(v) => `$${v}`} />
+                    <YAxis type="category" dataKey="name" width={130} tick={{ fontSize: 12 }} />
+                    <Tooltip formatter={(v) => `$${v.toFixed(2)}`} />
+                    <Bar dataKey="revenue" fill="#9b59b6" radius={[0, 6, 6, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <Alert severity="info">No product revenue data for this period.</Alert>
+              )}
+            </Paper>
+          </Grid>
+
+        </Grid>
       )}
 
-      <Snackbar
-        open={snack.open}
-        autoHideDuration={4000}
+      <Snackbar open={snack.open} autoHideDuration={4000}
         onClose={() => setSnack({ ...snack, open: false })}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-      >
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}>
         <Alert severity={snack.severity}>{snack.message}</Alert>
       </Snackbar>
     </>
