@@ -92,6 +92,7 @@ const OrderTrackingPage = ({ isLoggedIn }) => {
   const [actionLoading, setActionLoading] = useState(false);
   const [snack, setSnack] = useState({ open: false, message: '', severity: 'success' });
   const [itemReturnLoading, setItemReturnLoading] = useState({});
+  const [submittedReturnItems, setSubmittedReturnItems] = useState(new Set());
 
   useEffect(() => {
     if (!isLoggedIn) navigate('/login', { state: { returnTo: '/order-tracking' } });
@@ -343,25 +344,32 @@ const OrderTrackingPage = ({ isLoggedIn }) => {
                                 ${parseFloat(item.subtotal ?? (item.unit_price * item.quantity) ?? 0).toFixed(2)}
                               </Typography>
                               {canReturnItem && (
-                                <Button
-                                  size="small"
-                                  variant="outlined"
-                                  color="secondary"
-                                  disabled={!!itemReturnLoading[itemKey]}
-                                  onClick={async () => {
-                                    setItemReturnLoading(prev => ({ ...prev, [itemKey]: true }));
-                                    try {
-                                      await requestItemReturn(orderId, item.order_item_id);
-                                      setSnack({ open: true, message: `Return request submitted for ${item.product_name ?? 'item'}.`, severity: 'success' });
-                                    } catch (err) {
-                                      setSnack({ open: true, message: err.message || 'Return request failed.', severity: 'error' });
-                                    } finally {
-                                      setItemReturnLoading(prev => ({ ...prev, [itemKey]: false }));
-                                    }
-                                  }}
-                                >
-                                  {itemReturnLoading[itemKey] ? 'Requesting…' : 'Return Item'}
-                                </Button>
+                                submittedReturnItems.has(itemKey) ? (
+                                  <Button size="small" variant="outlined" disabled sx={{ color: '#27ae60', borderColor: '#27ae60' }}>
+                                    Requested
+                                  </Button>
+                                ) : (
+                                  <Button
+                                    size="small"
+                                    variant="outlined"
+                                    color="secondary"
+                                    disabled={!!itemReturnLoading[itemKey]}
+                                    onClick={async () => {
+                                      setItemReturnLoading(prev => ({ ...prev, [itemKey]: true }));
+                                      try {
+                                        await requestItemReturn(orderId, item.order_item_id);
+                                        setSubmittedReturnItems(prev => new Set([...prev, itemKey]));
+                                        setSnack({ open: true, message: `Return request submitted for ${item.product_name ?? 'item'}. Awaiting sales manager approval.`, severity: 'success' });
+                                      } catch (err) {
+                                        setSnack({ open: true, message: err.message || 'Return request failed.', severity: 'error' });
+                                      } finally {
+                                        setItemReturnLoading(prev => ({ ...prev, [itemKey]: false }));
+                                      }
+                                    }}
+                                  >
+                                    {itemReturnLoading[itemKey] ? 'Requesting…' : 'Return Item'}
+                                  </Button>
+                                )
                               )}
                             </Box>
                           </Box>
@@ -384,15 +392,6 @@ const OrderTrackingPage = ({ isLoggedIn }) => {
                         Cancel Order
                       </Button>
                     )}
-                    {canReturn && (
-                      <Button
-                        variant="outlined"
-                        color="secondary"
-                        onClick={() => openActionDialog('return', order)}
-                      >
-                        Return Order
-                      </Button>
-                    )}
                     {normalizedStatus === 'delivered' && !canReturn && (
                       <Typography variant="caption" sx={{ color: '#7f8c8d', alignSelf: 'center' }}>
                         Return window closed after {RETURN_WINDOW_DAYS} days.
@@ -413,25 +412,21 @@ const OrderTrackingPage = ({ isLoggedIn }) => {
       </Container>
 
       <Dialog open={actionDialog.open} onClose={actionLoading ? undefined : closeActionDialog}>
-        <DialogTitle>
-          {actionDialog.type === 'cancel' ? 'Cancel Order' : 'Return Order'}
-        </DialogTitle>
+        <DialogTitle>Cancel Order</DialogTitle>
         <DialogContent>
           <Typography variant="body2" sx={{ color: '#4a5568' }}>
-            {actionDialog.type === 'cancel'
-              ? 'This will cancel the order and restore its items to stock.'
-              : `This will mark the order as returned. Returns are limited to ${RETURN_WINDOW_DAYS} days after purchase.`}
+            This will cancel the order and restore its items to stock.
           </Typography>
         </DialogContent>
         <DialogActions>
           <Button onClick={closeActionDialog} disabled={actionLoading}>Close</Button>
           <Button
             onClick={handleOrderAction}
-            color={actionDialog.type === 'cancel' ? 'warning' : 'secondary'}
+            color="warning"
             variant="contained"
             disabled={actionLoading}
           >
-            {actionLoading ? 'Working...' : actionDialog.type === 'cancel' ? 'Confirm Cancel' : 'Confirm Return'}
+            {actionLoading ? 'Working...' : 'Confirm Cancel'}
           </Button>
         </DialogActions>
       </Dialog>
